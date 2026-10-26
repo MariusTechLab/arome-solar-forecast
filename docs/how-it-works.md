@@ -12,8 +12,10 @@ Open-Meteo API (AROME, every 15 min)          one REST call per roof plane
              └─ ..._peak_today                W + peak_time
 ```
 
-Everything runs inside Home Assistant: one `rest` sensor and `template` sensors,
-no custom component, no cloud account, no API key.
+With the YAML package, everything runs inside Home Assistant: one `rest`
+sensor and `template` sensors, no custom component, no cloud account, no API
+key. The integration (`custom_components/arome_solar_forecast`) implements the
+same model in Python (`forecast.py`) and adds the Energy dashboard forecast.
 
 ## Weather input
 
@@ -133,8 +135,8 @@ beyond the recorder retention.
 
 - No shading model: use the static hourly factors, or post-process.
 - No snow cover, no soiling dynamics, no inverter derating with heat.
-- Not available to the Home Assistant Energy dashboard "forecast" line, which
-  only accepts integrations implementing the solar-forecast platform.
+- The YAML package cannot feed the Energy dashboard "forecast" line, which
+  only accepts integrations: use the integration for that.
 - The REST call fails if Open-Meteo is unreachable: the sensors become
   unavailable until the next successful call (automations should have a
   fallback, as for any cloud forecast).

@@ -1,0 +1,120 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Prévision solaire AROME",
+        "description": "Prévision de production photovoltaïque à partir du modèle AROME de Météo-France (France et régions voisines), via Open-Meteo. Les autres pans de toit, les rendements et l'ombrage se règlent ensuite dans les options.",
+        "data": {
+          "name": "Nom",
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "model": "Modèle météo",
+          "kwp": "Puissance crête des panneaux",
+          "tilt": "Inclinaison",
+          "azimuth": "Orientation (boussole)",
+          "inverter_kw": "Puissance maximale de l'onduleur"
+        },
+        "data_description": {
+          "azimuth": "Direction vers laquelle les panneaux sont tournés, comme sur une boussole : 180 = sud, 90 = est, 270 = ouest.",
+          "tilt": "0 = à plat, 90 = vertical.",
+          "inverter_kw": "Puissance de sortie maximale du ou des onduleurs, 0 si elle est inconnue. Elle sert à l'écrêtage."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de joindre Open-Meteo. Réessayez plus tard.",
+      "outside_arome": "Ce lieu est hors de la zone couverte par AROME (France et régions voisines). Choisissez un autre modèle, par exemple best_match.",
+      "no_data": "Le modèle ne renvoie aucune donnée pour ce lieu. Choisissez un autre modèle.",
+      "invalid_shading": "Indiquez des paires heure=facteur séparées par des virgules, par exemple 8=0.7, 17=0.5 (heures de 0 à 23, facteurs de 0 à 1,5)."
+    },
+    "abort": {
+      "already_configured": "Cette installation est déjà configurée."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Installation photovoltaïque",
+        "description": "Les pans 2 et 3 sont ignorés tant que leur puissance crête vaut 0.",
+        "data": {
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "model": "Modèle météo",
+          "kwp": "Pan 1 : puissance crête",
+          "tilt": "Pan 1 : inclinaison",
+          "azimuth": "Pan 1 : orientation (boussole)",
+          "inverter_kw": "Puissance maximale de l'onduleur",
+          "kwp_2": "Pan 2 : puissance crête",
+          "tilt_2": "Pan 2 : inclinaison",
+          "azimuth_2": "Pan 2 : orientation (boussole)",
+          "kwp_3": "Pan 3 : puissance crête",
+          "tilt_3": "Pan 3 : inclinaison",
+          "azimuth_3": "Pan 3 : orientation (boussole)",
+          "system_efficiency": "Rendement du système",
+          "inverter_efficiency": "Rendement de l'onduleur",
+          "temp_coefficient": "Coefficient de température",
+          "cell_heating": "Échauffement des cellules",
+          "shading": "Facteurs d'ombrage",
+          "scan_minutes": "Intervalle de mise à jour"
+        },
+        "data_description": {
+          "system_efficiency": "Pertes dues à la salissure, au câblage et à la dispersion des modules (0,98 = 2 % de pertes).",
+          "temp_coefficient": "Variation de puissance par °C au-dessus de 25 °C, d'après la fiche technique des panneaux (Pmax).",
+          "cell_heating": "Échauffement des cellules par W/m² : 0,025 sur châssis ouvert, 0,03 en surimposition, 0,035 en intégration au bâti.",
+          "shading": "Facteurs par heure locale, par exemple 8=0.7, 16=0.5, 17=0.4. Vide = pas d'ombrage.",
+          "scan_minutes": "Open-Meteo est interrogé une fois par pan de toit à chaque mise à jour."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de joindre Open-Meteo. Réessayez plus tard.",
+      "outside_arome": "Ce lieu est hors de la zone couverte par AROME (France et régions voisines). Choisissez un autre modèle, par exemple best_match.",
+      "no_data": "Le modèle ne renvoie aucune donnée pour ce lieu. Choisissez un autre modèle.",
+      "invalid_shading": "Indiquez des paires heure=facteur séparées par des virgules, par exemple 8=0.7, 17=0.5 (heures de 0 à 23, facteurs de 0 à 1,5)."
+    }
+  },
+  "selector": {
+    "model": {
+      "options": {
+        "meteofrance_arome_france": "Météo-France AROME (France, 2 jours, recommandé)",
+        "meteofrance_seamless": "Météo-France AROME puis ARPEGE (4 jours)",
+        "best_match": "Choix automatique d'Open-Meteo (monde, 7 jours)",
+        "icon_d2": "DWD ICON-D2 (Allemagne et pays voisins, 2 jours)",
+        "icon_eu": "DWD ICON-EU (Europe, 4 jours)",
+        "knmi_harmonie_arome_europe": "KNMI Harmonie AROME (Benelux et pays voisins, 2 jours)",
+        "ecmwf_ifs": "ECMWF IFS (monde, 7 jours)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "energy_today": {"name": "Énergie aujourd'hui"},
+      "energy_tomorrow": {"name": "Énergie demain"},
+      "energy_remaining_today": {"name": "Énergie restante aujourd'hui"},
+      "energy_current_hour": {"name": "Énergie heure en cours"},
+      "energy_next_hour": {"name": "Énergie heure suivante"},
+      "power_now": {"name": "Puissance maintenant"},
+      "power_in_30_minutes": {"name": "Puissance dans 30 minutes"},
+      "power_in_1_hour": {"name": "Puissance dans 1 heure"},
+      "peak_power_today": {"name": "Pic de puissance aujourd'hui"},
+      "peak_time_today": {"name": "Heure du pic aujourd'hui"},
+      "peak_power_tomorrow": {"name": "Pic de puissance demain"},
+      "peak_time_tomorrow": {"name": "Heure du pic demain"},
+      "last_update": {"name": "Dernière mise à jour"}
+    }
+  },
+  "services": {
+    "get_forecast": {
+      "name": "Obtenir la prévision",
+      "description": "Renvoie la prévision de puissance photovoltaïque (kW) par demi-heure ou par quart d'heure, au format Solcast.",
+      "fields": {
+        "config_entry_id": {"name": "Installation", "description": "Facultatif quand une seule installation est configurée."},
+        "days": {"name": "Jours", "description": "Nombre de jours à partir d'aujourd'hui."},
+        "resolution": {"name": "Résolution", "description": "30min (format Solcast) ou 15min."}
+      }
+    }
+  },
+  "exceptions": {
+    "no_entry": {"message": "Aucune installation de prévision solaire AROME chargée ne correspond à cette demande."}
+  }
+}

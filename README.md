@@ -1,15 +1,19 @@
 # AROME solar forecast for Home Assistant
 
 [![Validate](https://github.com/MariusTechLab/arome-solar-forecast/actions/workflows/validate.yml/badge.svg)](https://github.com/MariusTechLab/arome-solar-forecast/actions/workflows/validate.yml)
+[![HACS](https://img.shields.io/badge/HACS-custom-orange.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 *[Version française](README.fr.md)*
 
 A free photovoltaic production forecast for Home Assistant, built on
 **Météo-France's AROME model** (2.5 km grid) through the
-[Open-Meteo](https://open-meteo.com/) API. It's a plain YAML package: no
-custom component, no account, no API key, no daily call quota, with an update
-every 15 minutes.
+[Open-Meteo](https://open-meteo.com/) API. No account, no API key, no daily
+call quota, an update every 15 minutes. Two ways to use it:
+
+- the **integration**, installed with HACS and set up in the user interface,
+  which also feeds the **Energy dashboard** forecast;
+- a plain **YAML package**, for those who prefer no custom component.
 
 On a real installation in the south of France, AROME's forecast **issued the
 day before** missed the daily production by **17 %** on average over 17
@@ -24,32 +28,58 @@ includes the tool to run the same test on your own data.
 - **Physical PV model**: cell temperature, temperature coefficient, system and
   inverter efficiency, **inverter clipping**, **several roof planes**
   (east/west...), optional **hourly shading factors**.
-- **Ready-to-use sensors**: energy today, tomorrow and remaining today, power
-  now and in one hour, peak power and peak time.
+- **Ready-to-use sensors**: energy today, tomorrow, remaining today, current
+  and next hour; power now, in 30 minutes and in one hour; peak power and peak
+  time today and tomorrow.
+- **Energy dashboard forecast** (integration): the expected production is
+  drawn next to the actual one.
 - **Solcast-compatible attribute**: `detailedForecast` with `period_start` and
   `pv_estimate` (kW, half hours) on the today and tomorrow sensors, so
-  templates written for Solcast work by changing the entity id.
-- **Built-in forecast check** (optional): records the previous-day and
+  templates written for Solcast work by changing the entity id. The
+  `arome_solar_forecast.get_forecast` action returns the same list.
+- **Robust**: the integration keeps the last forecast for up to 6 hours if
+  Open-Meteo is unreachable, and keeps the large forecast attributes out of the
+  history database.
+- **Built-in forecast check** (package): records the previous-day and
   morning forecasts, the actual production and the daily error, for AROME and
   for any other forecast you want to compare (Solcast, Forecast.Solar...).
 - **Benchmark tool**: ranks 8+ weather models against your own production
   history, using archived forecasts.
-- **Package generator**: one command builds the package for your system,
-  with English or French entity names.
-- **Tested**: scenario tests of every template against an independent
-  implementation of the formula, run in CI.
+- **English and French** user interface and entity names.
+- **Tested**: the integration's model and every package template are checked
+  against an independent implementation of the formula, in CI; hassfest and
+  HACS validation on every commit.
 
 ## Requirements
 
-- Home Assistant 2024.10 or newer (template `triggers:` syntax).
 - A location covered by AROME: France and neighbouring areas, roughly
-  37.5–55.4° N and 12° W–16° E. Elsewhere the package works with another
-  Open-Meteo model (`--model best_match`, `icon_d2`...); check with the
+  37.5–55.4° N and 12° W–16° E. Elsewhere, choose another weather model
+  (Open-Meteo best match, ICON-D2, ICON-EU, Harmonie, ECMWF); check with the
   benchmark which one fits your site.
-- Python 3.10+ on any computer to run the generator (optional: the package can
-  also be edited by hand).
+- Integration: Home Assistant 2025.2 or newer and HACS.
+- Package: Home Assistant 2024.10 or newer, and Python 3.10+ on any computer
+  to run the generator (optional: the package can also be edited by hand).
 
-## Installation
+## Installation with HACS (recommended)
+
+1. In HACS, open the menu (⋮) → **Custom repositories**, add
+   `https://github.com/MariusTechLab/arome-solar-forecast` with the type
+   **Integration**.
+2. Search for **AROME Solar Forecast**, download it and restart Home
+   Assistant.
+3. **Settings → Devices & services → Add integration → AROME Solar
+   Forecast.** Enter the peak power, tilt and azimuth of your panels (compass:
+   180 = south) and the inverter limit. The location defaults to your home.
+4. Optional, in the integration's **Configure** menu: second and third roof
+   planes, efficiencies, temperature coefficient, hourly shading factors,
+   weather model, update interval.
+5. Energy dashboard: **Settings → Dashboards → Energy → Solar panels →
+   your production sensor → Solar production forecast → AROME Solar
+   Forecast.**
+
+Several installations (houses, roofs) can be added as separate entries.
+
+## Installation as a YAML package
 
 ### 1. Generate the package
 
@@ -104,6 +134,26 @@ and edit:
   (index = local hour).
 
 ## Sensors
+
+### Integration
+
+Entity ids follow the entry name and the language of Home Assistant; with the
+default name and English: `sensor.arome_solar_forecast_energy_today`...
+
+| Sensor | Unit | Description |
+|---|---|---|
+| Energy today / tomorrow | kWh | attributes `detailedForecast` (30 min), `detailedForecast15` (15 min), `complete` |
+| Energy remaining today | kWh | from now to midnight |
+| Energy current hour / next hour | kWh | |
+| Power now / in 30 minutes / in 1 hour | W | long-term statistics |
+| Peak power today / tomorrow | W | |
+| Peak time today / tomorrow | timestamp | |
+| Last update | timestamp | diagnostic; attribute `stale` when the last call failed |
+
+Action `arome_solar_forecast.get_forecast` (`days`, `resolution`: `30min` or
+`15min`) returns `{model, updated, forecast: [{period_start, pv_estimate}]}`.
+
+### YAML package
 
 | Entity | Unit | Description |
 |---|---|---|
@@ -214,9 +264,13 @@ shading: use `--shading`.
 **The curve is shifted in time.** Most often the azimuth sign: see the
 [conventions table](docs/how-it-works.md#azimuth-conventions).
 
-**Can it feed the Energy dashboard forecast?** No: that line only accepts
-integrations implementing Home Assistant's solar-forecast platform. Use the
-dashboard examples instead.
+**Can it feed the Energy dashboard forecast?** Yes, with the integration
+(see the installation steps). The YAML package cannot: that line only accepts
+integrations.
+
+**Integration or package?** The integration for a setup in the user
+interface, the Energy dashboard and resilience to API outages. The package for
+an installation without custom component, or to adapt the templates.
 
 **Can I use it outside France?** Yes, with another model (`--model
 best_match`, `icon_d2`, `knmi_harmonie_arome_europe`...). Run the benchmark to

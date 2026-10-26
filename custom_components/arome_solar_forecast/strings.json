@@ -1,0 +1,120 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "AROME Solar Forecast",
+        "description": "PV forecast from the Météo-France AROME model (France and neighbouring areas), through Open-Meteo. More roof planes, efficiencies and shading can be set afterwards in the options.",
+        "data": {
+          "name": "Name",
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "model": "Weather model",
+          "kwp": "Peak power of the panels",
+          "tilt": "Tilt",
+          "azimuth": "Azimuth (compass)",
+          "inverter_kw": "Inverter AC limit"
+        },
+        "data_description": {
+          "azimuth": "Direction the panels face, as on a compass: 180 = south, 90 = east, 270 = west.",
+          "tilt": "0 = flat, 90 = vertical.",
+          "inverter_kw": "Maximum AC output of the inverter(s), 0 if unknown. Used for clipping."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Open-Meteo could not be reached. Try again later.",
+      "outside_arome": "This location is outside the AROME domain (France and neighbouring areas). Choose another model, for example best_match.",
+      "no_data": "The model returned no data for this location. Choose another model.",
+      "invalid_shading": "Use hour=factor pairs separated by commas, for example 8=0.7, 17=0.5 (hours 0 to 23, factors 0 to 1.5)."
+    },
+    "abort": {
+      "already_configured": "This PV system is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "PV system",
+        "description": "Roof planes 2 and 3 are ignored while their peak power is 0.",
+        "data": {
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "model": "Weather model",
+          "kwp": "Plane 1: peak power",
+          "tilt": "Plane 1: tilt",
+          "azimuth": "Plane 1: azimuth (compass)",
+          "inverter_kw": "Inverter AC limit",
+          "kwp_2": "Plane 2: peak power",
+          "tilt_2": "Plane 2: tilt",
+          "azimuth_2": "Plane 2: azimuth (compass)",
+          "kwp_3": "Plane 3: peak power",
+          "tilt_3": "Plane 3: tilt",
+          "azimuth_3": "Plane 3: azimuth (compass)",
+          "system_efficiency": "System efficiency",
+          "inverter_efficiency": "Inverter efficiency",
+          "temp_coefficient": "Temperature coefficient",
+          "cell_heating": "Cell heating",
+          "shading": "Shading factors",
+          "scan_minutes": "Update interval"
+        },
+        "data_description": {
+          "system_efficiency": "Soiling, wiring and mismatch losses (0.98 = 2 % losses).",
+          "temp_coefficient": "Power change per °C above 25 °C, from the panel datasheet (Pmax).",
+          "cell_heating": "Cell temperature rise per W/m²: 0.025 open rack, 0.03 roof mounted, 0.035 roof integrated.",
+          "shading": "Factors by local hour, for example 8=0.7, 16=0.5, 17=0.4. Empty = no shading.",
+          "scan_minutes": "Open-Meteo is called once per roof plane at each update."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Open-Meteo could not be reached. Try again later.",
+      "outside_arome": "This location is outside the AROME domain (France and neighbouring areas). Choose another model, for example best_match.",
+      "no_data": "The model returned no data for this location. Choose another model.",
+      "invalid_shading": "Use hour=factor pairs separated by commas, for example 8=0.7, 17=0.5 (hours 0 to 23, factors 0 to 1.5)."
+    }
+  },
+  "selector": {
+    "model": {
+      "options": {
+        "meteofrance_arome_france": "Météo-France AROME (France, 2 days, recommended)",
+        "meteofrance_seamless": "Météo-France AROME then ARPEGE (4 days)",
+        "best_match": "Open-Meteo best match (worldwide, 7 days)",
+        "icon_d2": "DWD ICON-D2 (Germany and neighbours, 2 days)",
+        "icon_eu": "DWD ICON-EU (Europe, 4 days)",
+        "knmi_harmonie_arome_europe": "KNMI Harmonie AROME (Benelux and neighbours, 2 days)",
+        "ecmwf_ifs": "ECMWF IFS (worldwide, 7 days)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "energy_today": {"name": "Energy today"},
+      "energy_tomorrow": {"name": "Energy tomorrow"},
+      "energy_remaining_today": {"name": "Energy remaining today"},
+      "energy_current_hour": {"name": "Energy current hour"},
+      "energy_next_hour": {"name": "Energy next hour"},
+      "power_now": {"name": "Power now"},
+      "power_in_30_minutes": {"name": "Power in 30 minutes"},
+      "power_in_1_hour": {"name": "Power in 1 hour"},
+      "peak_power_today": {"name": "Peak power today"},
+      "peak_time_today": {"name": "Peak time today"},
+      "peak_power_tomorrow": {"name": "Peak power tomorrow"},
+      "peak_time_tomorrow": {"name": "Peak time tomorrow"},
+      "last_update": {"name": "Last update"}
+    }
+  },
+  "services": {
+    "get_forecast": {
+      "name": "Get forecast",
+      "description": "Returns the PV power forecast (kW) per half hour or quarter hour, in the Solcast format.",
+      "fields": {
+        "config_entry_id": {"name": "PV system", "description": "Optional when only one system is configured."},
+        "days": {"name": "Days", "description": "Number of days from today."},
+        "resolution": {"name": "Resolution", "description": "30min (Solcast format) or 15min."}
+      }
+    }
+  },
+  "exceptions": {
+    "no_entry": {"message": "No loaded AROME Solar Forecast entry matches this request."}
+  }
+}

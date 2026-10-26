@@ -1,15 +1,20 @@
 # Prévision solaire AROME pour Home Assistant
 
 [![Validate](https://github.com/MariusTechLab/arome-solar-forecast/actions/workflows/validate.yml/badge.svg)](https://github.com/MariusTechLab/arome-solar-forecast/actions/workflows/validate.yml)
+[![HACS](https://img.shields.io/badge/HACS-custom-orange.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 *[English version](README.md)*
 
 Une prévision gratuite de production photovoltaïque pour Home Assistant,
 fondée sur le **modèle AROME de Météo-France** (maille de 2,5 km) via l'API
-[Open-Meteo](https://open-meteo.com/). C'est un simple package YAML : pas
-d'intégration personnalisée, pas de compte, pas de clé, pas de quota d'appels.
-La prévision est mise à jour toutes les 15 minutes.
+[Open-Meteo](https://open-meteo.com/). Pas de compte, pas de clé, pas de quota
+d'appels, et une mise à jour toutes les 15 minutes. Deux façons de l'utiliser :
+
+- **l'intégration**, installée avec HACS et réglée dans l'interface. Elle
+  alimente aussi la courbe de prévision du **tableau de bord Énergie** ;
+- **un simple package YAML**, pour ceux qui préfèrent se passer d'intégration
+  personnalisée.
 
 Sur une installation réelle du sud de la France, la prévision AROME **faite
 la veille** s'est trompée en moyenne de **17 %** sur la production du jour,
@@ -28,35 +33,65 @@ Le dépôt fournit l'outil pour refaire ce test sur vos propres données.
   - **plusieurs pans de toit** (est/ouest...) ;
   - **facteurs d'ombrage par heure**, en option.
 - **Capteurs prêts à l'emploi** :
-  - énergie du jour, du lendemain et restante aujourd'hui ;
-  - puissance maintenant et dans une heure ;
-  - pic de puissance et heure du pic.
+  - énergie du jour, du lendemain, restante aujourd'hui, de l'heure en cours
+    et de l'heure suivante ;
+  - puissance maintenant, dans 30 minutes et dans une heure ;
+  - pic de puissance et heure du pic, aujourd'hui et demain.
+- **Courbe de prévision du tableau de bord Énergie** (intégration) : la
+  production attendue s'affiche à côté de la production réelle.
 - **Attribut compatible Solcast** : `detailedForecast`, avec `period_start` et
   `pv_estimate` (kW, par demi-heure), sur les capteurs du jour et du
   lendemain. Les modèles Jinja écrits pour Solcast fonctionnent en changeant
-  simplement l'entité.
-- **Contrôle quotidien de la prévision** (en option) : enregistre chaque jour
+  simplement l'entité. L'action `arome_solar_forecast.get_forecast` renvoie la
+  même liste.
+- **Robuste** : si Open-Meteo ne répond pas, l'intégration garde la dernière
+  prévision jusqu'à 6 heures. Les gros attributs de prévision ne sont pas
+  enregistrés dans l'historique.
+- **Contrôle quotidien de la prévision** (package) : enregistre chaque jour
   les prévisions de la veille et du matin, la production réelle et l'écart.
   Il fonctionne pour AROME et pour toute autre prévision à comparer (Solcast,
   Forecast.Solar...).
 - **Banc d'essai** : classe plus de 8 modèles météo à partir de votre
   historique de production, grâce aux prévisions archivées.
-- **Générateur** : une commande produit le package de votre installation,
-  avec des noms d'entités en français ou en anglais.
-- **Testé** : chaque modèle Jinja est comparé à une implémentation
-  indépendante de la formule, à chaque modification (CI).
+- **Interface et noms d'entités** en français et en anglais.
+- **Testé** : le calcul de l'intégration et chaque modèle Jinja du package
+  sont comparés à une implémentation indépendante de la formule, à chaque
+  modification (CI). Les validations officielles de Home Assistant (hassfest)
+  et de HACS tournent aussi à chaque commit.
 
 ## Prérequis
 
-- Home Assistant 2024.10 ou plus récent (syntaxe `triggers:` des modèles).
 - **Un lieu couvert par AROME** : la France et les régions voisines,
-  environ de 37,5 à 55,4° N et de 12° O à 16° E. Ailleurs, le package
-  fonctionne avec un autre modèle d'Open-Meteo (`--model best_match`,
-  `icon_d2`...). Le banc d'essai indique lequel convient à votre site.
-- **Python 3.10 ou plus récent**, sur n'importe quel ordinateur, pour le
-  générateur. C'est facultatif : le package peut aussi se modifier à la main.
+  environ de 37,5 à 55,4° N et de 12° O à 16° E. Ailleurs, choisissez un
+  autre modèle (choix automatique d'Open-Meteo, ICON-D2, ICON-EU, Harmonie,
+  ECMWF). Le banc d'essai indique lequel convient à votre site.
+- **Intégration** : Home Assistant 2025.2 ou plus récent, et HACS.
+- **Package** : Home Assistant 2024.10 ou plus récent, et Python 3.10 ou plus
+  récent sur n'importe quel ordinateur pour le générateur. Le générateur est
+  facultatif : le package peut aussi se modifier à la main.
 
-## Installation
+## Installation avec HACS (recommandée)
+
+1. Dans HACS, ouvrez le menu (⋮) → **Dépôts personnalisés**, puis ajoutez
+   `https://github.com/MariusTechLab/arome-solar-forecast` avec le type
+   **Intégration**.
+2. Cherchez **AROME Solar Forecast**, téléchargez-la, puis redémarrez Home
+   Assistant.
+3. Allez dans **Paramètres → Appareils et services → Ajouter une intégration
+   → AROME Solar Forecast**. Indiquez la puissance crête, l'inclinaison et
+   l'orientation des panneaux (comme sur une boussole : 180 = sud), ainsi que
+   la limite de l'onduleur. La position de la maison est proposée par défaut.
+4. En option, dans le menu **Configurer** de l'intégration : deuxième et
+   troisième pans de toit, rendements, coefficient de température, facteurs
+   d'ombrage par heure, modèle météo, intervalle de mise à jour.
+5. Pour le tableau de bord Énergie : **Paramètres → Tableaux de bord →
+   Énergie → Panneaux solaires → votre capteur de production → Prévision de
+   production solaire → AROME Solar Forecast**.
+
+Vous pouvez ajouter plusieurs installations (maisons, toitures), chacune
+comme une entrée séparée.
+
+## Installation sous forme de package YAML
 
 ### 1. Générer le package
 
@@ -113,6 +148,27 @@ puis modifiez deux endroits :
     locale).
 
 ## Capteurs
+
+### Intégration
+
+Les identifiants des entités suivent le nom de l'entrée et la langue de Home
+Assistant. Avec le nom par défaut et Home Assistant en français :
+`sensor.arome_solar_forecast_energie_aujourd_hui`...
+
+| Capteur | Unité | Description |
+|---|---|---|
+| Énergie aujourd'hui / demain | kWh | attributs `detailedForecast` (30 min), `detailedForecast15` (15 min), `complete` |
+| Énergie restante aujourd'hui | kWh | de maintenant à minuit |
+| Énergie heure en cours / heure suivante | kWh | |
+| Puissance maintenant / dans 30 minutes / dans 1 heure | W | statistiques à long terme |
+| Pic de puissance aujourd'hui / demain | W | |
+| Heure du pic aujourd'hui / demain | horodatage | |
+| Dernière mise à jour | horodatage | diagnostic ; attribut `stale` si le dernier appel a échoué |
+
+L'action `arome_solar_forecast.get_forecast` (`days`, `resolution` : `30min`
+ou `15min`) renvoie `{model, updated, forecast: [{period_start, pv_estimate}]}`.
+
+### Package YAML
 
 Avec `--lang fr` :
 
@@ -237,10 +293,14 @@ Voir le [guide du banc d'essai](docs/benchmark.md), en anglais.
 **La courbe est décalée dans le temps.** Le plus souvent, c'est le signe de
 l'azimut : voir le [tableau des conventions](docs/how-it-works.md#azimuth-conventions).
 
-**Peut-elle alimenter la prévision du tableau de bord Énergie ?** Non. Cette
-courbe n'accepte que les intégrations qui implémentent la plateforme de
-prévision solaire de Home Assistant. Utilisez plutôt les exemples de tableau de
-bord.
+**Peut-elle alimenter la prévision du tableau de bord Énergie ?** Oui, avec
+l'intégration (voir l'installation). Le package YAML ne le peut pas : cette
+courbe n'accepte que les intégrations.
+
+**Intégration ou package ?** L'intégration pour un réglage dans l'interface,
+le tableau de bord Énergie et la résistance aux pannes de l'API. Le package
+pour une installation sans intégration personnalisée, ou pour modifier les
+modèles Jinja.
 
 **Peut-on l'utiliser hors de France ?** Oui, avec un autre modèle :
 `--model best_match`, `icon_d2`, `knmi_harmonie_arome_europe`... Le banc

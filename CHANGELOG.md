@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.1.0
+
+- New Home Assistant integration, installable with HACS (`custom_components/arome_solar_forecast`):
+  - setup and options in the user interface (up to three roof planes,
+    efficiencies, temperature coefficient, hourly shading, weather model,
+    update interval), English and French;
+  - Energy dashboard solar forecast;
+  - 13 sensors: energy today / tomorrow / remaining / current hour / next
+    hour, power now / in 30 minutes / in 1 hour, peak power and time today
+    and tomorrow, last update;
+  - Solcast-format `detailedForecast` attributes, kept out of the recorder;
+  - `arome_solar_forecast.get_forecast` action;
+  - keeps the last forecast for up to 6 hours when Open-Meteo fails;
+  - diagnostics with redacted location.
+- Tests of the integration's forecast model, translations and manifest;
+  hassfest and HACS validation in CI.
+
 ## 1.0.0
 
 First public release.

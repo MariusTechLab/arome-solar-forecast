@@ -1,0 +1,19 @@
+get_forecast:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: arome_solar_forecast
+    days:
+      default: 2
+      selector:
+        number:
+          min: 1
+          max: 7
+    resolution:
+      default: 30min
+      selector:
+        select:
+          options:
+            - 15min
+            - 30min
