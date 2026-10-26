@@ -62,6 +62,16 @@ includes the tool to run the same test on your own data.
 
 ## Installation with HACS (recommended)
 
+In one click, from a browser where your Home Assistant is open:
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=MariusTechLab&repository=arome-solar-forecast&category=integration)
+
+Then, after downloading and restarting:
+
+[![Open your Home Assistant instance and start setting up AROME Solar Forecast.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=arome_solar_forecast)
+
+Or by hand:
+
 1. In HACS, open the menu (⋮) → **Custom repositories**, add
    `https://github.com/MariusTechLab/arome-solar-forecast` with the type
    **Integration**.
