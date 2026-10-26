@@ -1,0 +1,54 @@
+# Best start time today for an appliance of a given duration and power.
+# Add to the same package (or another one). Uses the quarter-hour curve.
+#
+# Score of a start time = forecast PV energy usable by the appliance during its
+# run: sum over the run of min(forecast power - house base load, appliance power).
+# On ties (within 5 %) the earliest start wins, leaving margin for clouds.
+#
+# Adjust the four values below. Entity ids assume the default English names.
+
+template:
+  - sensor:
+      - name: PV forecast AROME best start today
+        unique_id: pv_forecast_arome_best_start_today
+        device_class: timestamp
+        availability: "{{ state_attr('sensor.pv_forecast_arome_curve', 'detailedForecast15') is list }}"
+        state: >-
+          {%- set duration_min = 60 -%}
+          {%- set appliance_kw = 2.0 -%}
+          {%- set base_load_kw = 0.3 -%}
+          {%- set earliest = today_at('08:00') -%}
+          {%- set fc = state_attr('sensor.pv_forecast_arome_curve', 'detailedForecast15') -%}
+          {%- set steps = (duration_min / 15) | round(0, 'ceil') | int -%}
+          {%- set day = fc | selectattr('period_start', 'search', '^' ~ (now().date() | string)) | list -%}
+          {%- set best = namespace(start=none, kwh=-1) -%}
+          {%- for i in range(day | count - steps + 1) -%}
+            {%- set start = as_datetime(day[i].period_start) -%}
+            {%- if start >= [earliest, now()] | max -%}
+              {%- set run = namespace(kwh=0) -%}
+              {%- for x in day[i:i + steps] -%}
+                {%- set run.kwh = run.kwh + ([[x.pv_estimate - base_load_kw, 0] | max, appliance_kw] | min) * 0.25 -%}
+              {%- endfor -%}
+              {%- if best.kwh < 0 or run.kwh > best.kwh * 1.05 + 0.01 -%}
+                {%- set best.start = start -%}{%- set best.kwh = run.kwh -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ best.start.isoformat() if best.start and best.kwh > 0 else none }}
+        attributes:
+          solar_kwh: >-
+            {%- set duration_min = 60 -%}
+            {%- set appliance_kw = 2.0 -%}
+            {%- set base_load_kw = 0.3 -%}
+            {%- set start = states('sensor.pv_forecast_arome_best_start_today') -%}
+            {%- set fc = state_attr('sensor.pv_forecast_arome_curve', 'detailedForecast15') or [] -%}
+            {%- set run = namespace(kwh=0) -%}
+            {%- if as_datetime(start) is not none -%}
+              {%- for x in fc -%}
+                {%- set s = as_datetime(x.period_start) -%}
+                {%- if as_datetime(start) <= s < as_datetime(start) + timedelta(minutes=duration_min) -%}
+                  {%- set run.kwh = run.kwh + ([[x.pv_estimate - base_load_kw, 0] | max, appliance_kw] | min) * 0.25 -%}
+                {%- endif -%}
+              {%- endfor -%}
+            {%- endif -%}
+            {{ run.kwh | round(2) }}

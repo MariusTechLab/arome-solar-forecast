@@ -1,0 +1,77 @@
+# Dashboard cards (paste into a dashboard in YAML mode, under "cards:").
+# Replace sensor.pv_power (actual PV power) and sensor.solar_energy_today
+# (actual daily energy) with your own entities.
+
+- type: entities
+  title: Solar forecast (AROME)
+  entities:
+    - entity: sensor.pv_forecast_arome_today
+      name: Today
+    - entity: sensor.pv_forecast_arome_remaining_today
+      name: Remaining today
+    - entity: sensor.pv_forecast_arome_tomorrow
+      name: Tomorrow
+    - entity: sensor.pv_forecast_arome_power_now
+      name: Forecast power now
+    - entity: sensor.pv_forecast_arome_power_in_1_hour
+      name: Forecast power in 1 hour
+    - type: attribute
+      entity: sensor.pv_forecast_arome_peak_today
+      attribute: peak_time
+      name: Peak time
+      format: time
+    - entity: sensor.pv_forecast_arome_peak_today
+      name: Peak power
+
+# Forecast against reality, over the last two days.
+- type: history-graph
+  title: Forecast vs actual PV power
+  hours_to_show: 48
+  entities:
+    - entity: sensor.pv_forecast_arome_power_now
+      name: AROME forecast
+    - entity: sensor.pv_power
+      name: Actual
+
+# Daily errors recorded by the optional forecast check (--actual-entity).
+# Each value is set at 23:55 and held for 24 hours. Beyond the recorder's
+# retention period, the graph falls back on long-term statistics.
+- type: history-graph
+  title: Daily forecast error (%), forecast - actual
+  hours_to_show: 720
+  entities:
+    - entity: sensor.pv_forecast_check_error_morning_arome
+      name: AROME, morning
+    - entity: sensor.pv_forecast_check_error_previous_day_arome
+      name: AROME, previous day
+
+# Optional: today's and tomorrow's curve with the ApexCharts custom card
+# (https://github.com/RomRider/apexcharts-card, installed through HACS).
+- type: custom:apexcharts-card
+  header:
+    show: true
+    title: AROME forecast, today and tomorrow
+  graph_span: 2d
+  span:
+    start: day
+  now:
+    show: true
+  yaxis:
+    - min: 0
+      decimals: 1
+  series:
+    - entity: sensor.pv_forecast_arome_curve
+      name: Forecast (kW)
+      type: area
+      curve: smooth
+      opacity: 0.3
+      data_generator: |
+        return entity.attributes.detailedForecast15.map(x =>
+          [new Date(x.period_start).getTime(), x.pv_estimate]);
+    - entity: sensor.pv_power
+      name: Actual (kW)
+      type: line
+      group_by:
+        func: avg
+        duration: 15min
+      transform: "return x > 50 ? x / 1000 : x;"

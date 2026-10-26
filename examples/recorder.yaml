@@ -1,0 +1,14 @@
+# Optional: keep the raw API data and the 192-point curve out of the history
+# database. Their attributes are a few kilobytes and change every 15 minutes
+# (about 0.5 to 1 MB per day otherwise). The daily, remaining and power sensors
+# stay recorded, with long-term statistics for the power sensors.
+#
+# Merge into the existing "recorder:" section of configuration.yaml.
+recorder:
+  exclude:
+    entities:
+      - sensor.pv_forecast_arome_raw_data
+      - sensor.pv_forecast_arome_curve
+    # For an installation with several roof planes:
+    entity_globs:
+      - sensor.pv_forecast_arome_raw_data_*
