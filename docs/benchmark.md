@@ -41,8 +41,8 @@ Daily energy error, test period (lower is better):
 | **Météo-France AROME** | **17 %** | **14 %** |
 | GFS (NOAA) | 20 % | 21 % |
 | UKMO 10 km (Met Office) | 20 % | 19 % |
-| Solcast, 07:00 forecast | 21 % (same morning) | — |
-| Solcast, updated during the day | — | 20 % |
+| Solcast, 07:00 forecast | 21 % (same morning) | - |
+| Solcast, updated during the day | - | 20 % |
 | ICON-EU (DWD) | 22 % | 18 % |
 | ECMWF IFS 0.25° | 24 % | 21 % |
 | ECMWF IFS (HRES) | 23 % | 19 % |

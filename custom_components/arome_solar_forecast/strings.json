@@ -55,14 +55,18 @@
           "temp_coefficient": "Temperature coefficient",
           "cell_heating": "Cell heating",
           "shading": "Shading factors",
-          "scan_minutes": "Update interval"
+          "scan_minutes": "Update interval",
+          "auto_correction": "Automatic correction",
+          "production_entity": "Production sensor"
         },
         "data_description": {
           "system_efficiency": "Soiling, wiring and mismatch losses (0.98 = 2 % losses).",
           "temp_coefficient": "Power change per °C above 25 °C, from the panel datasheet (Pmax).",
           "cell_heating": "Cell temperature rise per W/m²: 0.025 open rack, 0.03 roof mounted, 0.035 roof integrated.",
           "shading": "Factors by local hour, for example 8=0.7, 16=0.5, 17=0.4. Empty = no shading.",
-          "scan_minutes": "Open-Meteo is called once per roof plane at each update."
+          "scan_minutes": "Open-Meteo is called once per roof plane at each update.",
+          "auto_correction": "Learns a correction factor for each hour from the actual production of the last 14 days, recomputed every night. It replaces the shading factors above, starting from them: no correction before 3 days of data, then a gradual one (about half way after 7 days, two thirds after 14).",
+          "production_entity": "Energy sensor of the PV production (kWh, total or daily) or power sensor (W or kW), with long-term statistics."
         }
       }
     },
@@ -70,7 +74,8 @@
       "cannot_connect": "Open-Meteo could not be reached. Try again later.",
       "outside_arome": "This location is outside the AROME domain (France and neighbouring areas). Choose another model, for example best_match.",
       "no_data": "The model returned no data for this location. Choose another model.",
-      "invalid_shading": "Use hour=factor pairs separated by commas, for example 8=0.7, 17=0.5 (hours 0 to 23, factors 0 to 1.5)."
+      "invalid_shading": "Use hour=factor pairs separated by commas, for example 8=0.7, 17=0.5 (hours 0 to 23, factors 0 to 1.5).",
+      "production_required": "Choose the production sensor to enable the automatic correction."
     }
   },
   "selector": {
@@ -132,6 +137,9 @@
       },
       "last_update": {
         "name": "Last update"
+      },
+      "correction": {
+        "name": "Correction factor"
       }
     }
   },

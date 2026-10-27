@@ -10,10 +10,11 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import AUTO_RUN_TIME, DOMAIN
 from .coordinator import AromeForecastCoordinator
 from .forecast import QUARTER, best_window, half_hours, quarter_hours
 
@@ -103,9 +104,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: AromeConfigEntry) -> bool:
     coordinator = AromeForecastCoordinator(hass, entry)
+    await coordinator.async_load_correction()
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_reload))
+    if coordinator.auto_enabled:
+        hour, minute = AUTO_RUN_TIME
+        entry.async_on_unload(async_track_time_change(
+            hass, coordinator.async_update_correction, hour=hour, minute=minute, second=0))
+        entry.async_create_background_task(hass, coordinator.async_update_correction(),
+                                           f"{DOMAIN} automatic correction")
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

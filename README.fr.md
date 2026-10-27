@@ -178,6 +178,37 @@ Assistant. Avec le nom par défaut et Home Assistant en français :
 L'action `arome_solar_forecast.get_forecast` (`days`, `resolution` : `30min`
 ou `15min`) renvoie `{model, updated, forecast: [{period_start, pv_estimate}]}`.
 
+### Correction automatique
+
+Dans **Configurer**, cochez **Correction automatique** et choisissez votre
+capteur de production solaire : énergie en kWh (totale ou du jour) ou
+puissance en W ou kW, avec statistiques à long terme. Chaque nuit à 03:17,
+ainsi qu'au démarrage, l'intégration compare heure par heure les prévisions
+AROME archivées des 14 derniers jours à votre production réelle, et apprend un
+facteur de correction pour chaque heure de la journée. Il prend en compte
+l'ombrage (arbres, bâtiments), la salissure ou une puissance plus faible que
+celle déclarée, comme l'atténuation automatique de Solcast, sans consommer de
+quota d'API.
+
+Tant qu'il y a peu de données, elle reste prudente :
+
+- elle part de vos facteurs d'ombrage manuels (1 par défaut) ;
+- une heure n'est pas modifiée tant qu'elle n'a pas 3 jours de données ;
+- ensuite, le facteur se rapproche progressivement de la valeur mesurée :
+  poids = jours / (jours + 7), soit environ à mi-chemin après 7 jours et aux
+  deux tiers après 14 ;
+- elle utilise la médiane des rapports quotidiens : une panne de l'onduleur ou
+  une journée plus ensoleillée que prévu ne déplace pas le facteur ;
+- les jours qui ne produisent presque rien alors que du soleil était prévu
+  sont considérés comme des pannes et écartés ; les heures prévues sous 5 % de
+  la puissance crête sont ignorées ;
+- les facteurs restent entre 0,3 et 1,2.
+
+Le capteur de diagnostic **Facteur de correction** affiche le facteur moyen.
+Ses attributs donnent, pour chaque heure, le facteur, le nombre de jours, le
+rapport médian et le poids. Les facteurs sont enregistrés et conservés après
+un redémarrage.
+
 ### Meilleure heure pour lancer un appareil
 
 L'action `arome_solar_forecast.find_best_window` trouve la suite de quarts
@@ -214,8 +245,8 @@ Avec `--lang fr` :
 | `sensor.prevision_pv_arome_puissance_maintenant` | W | puissance prévue pour le quart d'heure en cours |
 | `sensor.prevision_pv_arome_puissance_dans_1_heure` | W | puissance prévue dans une heure |
 | `sensor.prevision_pv_arome_pic_aujourd_hui` | W | quart d'heure le plus fort ; attribut `peak_time` |
-| `sensor.prevision_pv_arome_courbe` | — | attribut `detailedForecast15` : 192 quarts d'heure |
-| `sensor.prevision_pv_arome_donnees_brutes` | — | réponse d'Open-Meteo (technique) |
+| `sensor.prevision_pv_arome_courbe` | - | attribut `detailedForecast15` : 192 quarts d'heure |
+| `sensor.prevision_pv_arome_donnees_brutes` | - | réponse d'Open-Meteo (technique) |
 
 Sans `--lang fr`, les entités s'appellent `sensor.pv_forecast_arome_today`,
 `..._tomorrow`, etc. Détails dans [le fonctionnement](docs/how-it-works.md).

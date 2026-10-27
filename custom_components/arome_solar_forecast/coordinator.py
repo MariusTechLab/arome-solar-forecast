@@ -4,24 +4,28 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Any
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from .const import (
     API_URL,
     ARRAY_KEYS,
+    CONF_AUTO_CORRECTION,
     CONF_CELL_HEATING,
     CONF_INVERTER_EFFICIENCY,
     CONF_INVERTER_KW,
     CONF_MODEL,
+    CONF_PRODUCTION_ENTITY,
     CONF_SCAN_MINUTES,
     CONF_SHADING,
     CONF_SYSTEM_EFFICIENCY,
@@ -39,7 +43,17 @@ from .const import (
     STALE_AFTER_HOURS,
     VERSION,
 )
-from .forecast import PvArray, PvSystem, Slot, compute_curve, has_irradiance, parse_shading, request_params
+from .correction import compute_correction
+from .forecast import (
+    AutoCorrection,
+    PvArray,
+    PvSystem,
+    Slot,
+    compute_curve,
+    has_irradiance,
+    parse_shading,
+    request_params,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,7 +112,55 @@ class AromeForecastCoordinator(DataUpdateCoordinator[ForecastData]):
         self.longitude = float(entry_value(entry, "longitude", hass.config.longitude))
         self.model = str(entry_value(entry, CONF_MODEL, DEFAULT_MODEL))
         self.system = system_from_entry(entry)
+        self.manual_shading = self.system.shading
+        self.production_entity: str | None = entry_value(entry, CONF_PRODUCTION_ENTITY) or None
+        self.auto_enabled = bool(entry_value(entry, CONF_AUTO_CORRECTION, False)) and bool(self.production_entity)
+        self.correction: AutoCorrection | None = None
+        self.correction_updated: datetime | None = None
+        self.correction_error: str | None = None
+        self._store: Store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}")
         self._session = async_get_clientsession(hass)
+
+    def _apply_correction(self, correction: AutoCorrection, updated: datetime) -> None:
+        self.correction = correction
+        self.correction_updated = updated
+        self.system = replace(self.system, shading=correction.factors)
+
+    async def async_load_correction(self) -> None:
+        """Use the factors saved by the last run until the next one."""
+        if not self.auto_enabled:
+            return
+        saved = await self._store.async_load()
+        if (saved and saved.get("entity") == self.production_entity
+                and saved.get("manual") == list(self.manual_shading) and len(saved.get("factors", [])) == 24):
+            hours = {int(h): v for h, v in saved.get("hours", {}).items()}
+            updated = dt_util.parse_datetime(saved["updated"]) or dt_util.utcnow()
+            self._apply_correction(AutoCorrection(tuple(saved["factors"]), hours, saved.get("days", 0)), updated)
+
+    async def async_update_correction(self, *_: Any) -> None:
+        """Recompute the hourly factors from the last days of production."""
+        if not self.auto_enabled or not self.production_entity:
+            return
+        try:
+            result = await compute_correction(self.hass, self._session, self.latitude, self.longitude,
+                                              self.model, self.system, self.manual_shading,
+                                              self.production_entity)
+        except (aiohttp.ClientError, TimeoutError, ValueError, KeyError, HomeAssistantError) as err:
+            self.correction_error = str(err)
+            _LOGGER.warning("Automatic correction not updated, keeping the previous factors: %s", err)
+            return
+        self.correction_error = None
+        now = dt_util.utcnow()
+        self._apply_correction(result, now)
+        await self._store.async_save({
+            "entity": self.production_entity,
+            "manual": list(self.manual_shading),
+            "factors": list(result.factors),
+            "hours": {str(h): v for h, v in result.hours.items()},
+            "days": result.days,
+            "updated": now.isoformat(),
+        })
+        await self.async_request_refresh()
 
     async def _async_update_data(self) -> ForecastData:
         try:

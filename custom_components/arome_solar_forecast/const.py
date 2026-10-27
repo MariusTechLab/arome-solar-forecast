@@ -3,8 +3,9 @@
 from typing import Final
 
 DOMAIN: Final = "arome_solar_forecast"
-VERSION: Final = "1.2.0"
+VERSION: Final = "1.3.0"
 API_URL: Final = "https://api.open-meteo.com/v1/forecast"
+ARCHIVE_URL: Final = "https://previous-runs-api.open-meteo.com/v1/forecast"
 ATTRIBUTION: Final = "Weather data by Open-Meteo.com (CC BY 4.0), model by Météo-France"
 
 CONF_MODEL: Final = "model"
@@ -24,6 +25,8 @@ CONF_TEMP_COEFFICIENT: Final = "temp_coefficient"
 CONF_CELL_HEATING: Final = "cell_heating"
 CONF_SHADING: Final = "shading"
 CONF_SCAN_MINUTES: Final = "scan_minutes"
+CONF_AUTO_CORRECTION: Final = "auto_correction"
+CONF_PRODUCTION_ENTITY: Final = "production_entity"
 
 ARRAY_KEYS: Final = (
     (CONF_KWP, CONF_TILT, CONF_AZIMUTH),
@@ -57,3 +60,7 @@ AROME_LONGITUDE: Final = (-12.0, 16.0)
 
 # Keep using the last successful forecast for this long when the API fails.
 STALE_AFTER_HOURS: Final = 6
+
+# Automatic correction: days of history compared, and nightly run time.
+AUTO_DAYS: Final = 14
+AUTO_RUN_TIME: Final = (3, 17)

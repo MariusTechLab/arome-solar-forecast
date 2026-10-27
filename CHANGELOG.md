@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0
+
+- Automatic correction (option): learns a factor for each hour of the day from
+  the actual production of the last 14 days (recorder statistics) against the
+  archived forecasts (Open-Meteo Previous Runs API), recomputed every night.
+  Starts from the manual shading factors, no change before 3 days of data,
+  then weight = days / (days + 7); median of the daily ratios; outage days and
+  low-sun hours skipped; factors between 0.3 and 1.2; saved across restarts.
+- New diagnostic sensor "Correction factor" with the details per hour.
+- The integration now depends on the recorder.
+
 ## 1.2.0
 
 - New action `arome_solar_forecast.find_best_window`: best run of consecutive

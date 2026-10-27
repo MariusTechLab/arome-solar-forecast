@@ -55,14 +55,18 @@
           "temp_coefficient": "Coefficient de température",
           "cell_heating": "Échauffement des cellules",
           "shading": "Facteurs d'ombrage",
-          "scan_minutes": "Intervalle de mise à jour"
+          "scan_minutes": "Intervalle de mise à jour",
+          "auto_correction": "Correction automatique",
+          "production_entity": "Capteur de production"
         },
         "data_description": {
           "system_efficiency": "Pertes dues à la salissure, au câblage et à la dispersion des modules (0,98 = 2 % de pertes).",
           "temp_coefficient": "Variation de puissance par °C au-dessus de 25 °C, d'après la fiche technique des panneaux (Pmax).",
           "cell_heating": "Échauffement des cellules par W/m² : 0,025 sur châssis ouvert, 0,03 en surimposition, 0,035 en intégration au bâti.",
           "shading": "Facteurs par heure locale, par exemple 8=0.7, 16=0.5, 17=0.4. Vide = pas d'ombrage.",
-          "scan_minutes": "Open-Meteo est interrogé une fois par pan de toit à chaque mise à jour."
+          "scan_minutes": "Open-Meteo est interrogé une fois par pan de toit à chaque mise à jour.",
+          "auto_correction": "Apprend un facteur de correction pour chaque heure à partir de la production réelle des 14 derniers jours, recalculé chaque nuit. Il remplace les facteurs d'ombrage ci-dessus en partant d'eux : aucune correction avant 3 jours de données, puis une correction progressive (environ à mi-chemin après 7 jours, aux deux tiers après 14).",
+          "production_entity": "Capteur d'énergie de la production solaire (kWh, total ou du jour) ou capteur de puissance (W ou kW), avec statistiques à long terme."
         }
       }
     },
@@ -70,7 +74,8 @@
       "cannot_connect": "Impossible de joindre Open-Meteo. Réessayez plus tard.",
       "outside_arome": "Ce lieu est hors de la zone couverte par AROME (France et régions voisines). Choisissez un autre modèle, par exemple best_match.",
       "no_data": "Le modèle ne renvoie aucune donnée pour ce lieu. Choisissez un autre modèle.",
-      "invalid_shading": "Indiquez des paires heure=facteur séparées par des virgules, par exemple 8=0.7, 17=0.5 (heures de 0 à 23, facteurs de 0 à 1,5)."
+      "invalid_shading": "Indiquez des paires heure=facteur séparées par des virgules, par exemple 8=0.7, 17=0.5 (heures de 0 à 23, facteurs de 0 à 1,5).",
+      "production_required": "Choisissez le capteur de production pour activer la correction automatique."
     }
   },
   "selector": {
@@ -132,6 +137,9 @@
       },
       "last_update": {
         "name": "Dernière mise à jour"
+      },
+      "correction": {
+        "name": "Facteur de correction"
       }
     }
   },

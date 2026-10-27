@@ -137,6 +137,72 @@ class BestWindowTest(unittest.TestCase):
         self.assertIsNone(fc.best_window(self.curve, timedelta(hours=4), after, before))  # does not fit
 
 
+class AutoCorrectionTest(unittest.TestCase):
+    """Gradual learning: nothing before 3 days, then w = days / (days + 7)."""
+
+    def history(self, days: int, ratio_by_hour: dict[int, float], outage_days: tuple[int, ...] = (),
+                odd_days: dict[int, float] | None = None):
+        forecast, actual = {}, {}
+        for d in range(days):
+            for h in range(8, 18):  # local hours, Paris summer time = UTC + 2
+                start = datetime(2026, 6, 1 + d, h, tzinfo=PARIS).astimezone(timezone.utc)
+                forecast[start] = 1.5
+                ratio = ratio_by_hour.get(h, 1.0)
+                if odd_days and d in odd_days:
+                    ratio = odd_days[d]
+                actual[start] = 0.0 if d in outage_days else 1.5 * ratio
+        return forecast, actual
+
+    def run_auto(self, forecast, actual, prior=None):
+        return fc.auto_correction(forecast, actual, prior or (1.0,) * 24, 3.0, PARIS)
+
+    def test_no_correction_before_three_days(self) -> None:
+        r = self.run_auto(*self.history(2, {17: 0.5}))
+        self.assertEqual(r.factors[17], 1.0)
+        self.assertEqual(r.hours[17]["weight"], 0.0)
+        self.assertEqual(r.days, 2)
+
+    def test_gradual_weight(self) -> None:
+        for days, expected in ((3, 1 - 0.5 * 3 / 10), (7, 1 - 0.5 * 7 / 14), (14, 1 - 0.5 * 14 / 21)):
+            r = self.run_auto(*self.history(days, {17: 0.5}))
+            self.assertAlmostEqual(r.factors[17], round(expected, 3), places=3, msg=f"{days} days")
+            self.assertEqual(r.factors[12], 1.0)  # no gap at noon, no change
+
+    def test_starts_from_manual_factor(self) -> None:
+        prior = [1.0] * 24
+        prior[17] = 0.4
+        r = self.run_auto(*self.history(7, {17: 0.5}), prior=tuple(prior))
+        self.assertAlmostEqual(r.factors[17], 0.4 + (0.5 - 0.4) * 0.5, places=3)
+        r = self.run_auto(*self.history(2, {17: 0.5}), prior=tuple(prior))
+        self.assertEqual(r.factors[17], 0.4)  # too few days: manual factor kept
+
+    def test_outage_and_odd_days_are_ignored(self) -> None:
+        r = self.run_auto(*self.history(10, {17: 0.5}, outage_days=(3, 4)))
+        self.assertEqual(r.days, 8)
+        self.assertEqual(r.hours[17]["days"], 8)
+        r = self.run_auto(*self.history(10, {17: 0.5}, odd_days={1: 1.8}))
+        self.assertEqual(r.hours[17]["median_ratio"], 0.5)  # one very sunny surprise does not move the median
+
+    def test_low_forecast_hours_and_bounds(self) -> None:
+        forecast, actual = self.history(14, {9: 0.05, 11: 1.9})
+        dawn = datetime(2026, 6, 2, 6, tzinfo=PARIS).astimezone(timezone.utc)
+        forecast[dawn], actual[dawn] = 0.1, 0.0  # under 5 % of 3 kWp: ignored
+        r = self.run_auto(forecast, actual)
+        self.assertNotIn(6, r.hours)
+        self.assertAlmostEqual(r.factors[9], round(1 - 0.95 * 14 / 21, 3), places=3)
+        self.assertEqual(r.factors[11], fc.AUTO_RANGE[1])  # 1.6 capped at 1.2
+
+    def test_hourly_archive_curve(self) -> None:
+        hourly = {"time": [f"2026-06-21T{h:02d}:00" for h in range(24)],
+                  "global_tilted_irradiance": [0] * 10 + [800] * 4 + [0] * 10,
+                  "temperature_2m": [20] * 24}
+        system = fc.PvSystem(arrays=(fc.PvArray(3, 30, 180),))
+        curve = fc.compute_curve(system, [{"hourly": hourly}], timezone.utc, block_name="hourly",
+                                 step=timedelta(hours=1))
+        self.assertEqual(curve[10].start, datetime(2026, 6, 21, 9, tzinfo=timezone.utc))  # value at 10:00 = hour 9-10
+        self.assertGreater(curve[10].kw, 1.5)
+
+
 class HelpersTest(unittest.TestCase):
     def test_azimuth_and_params(self) -> None:
         self.assertEqual(fc.PvArray(1, 18, 165).openmeteo_azimuth, -15)

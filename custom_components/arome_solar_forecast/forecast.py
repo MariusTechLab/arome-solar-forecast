@@ -70,26 +70,28 @@ def has_irradiance(response: dict) -> bool:
     return any(v is not None for v in values)
 
 
-def compute_curve(system: PvSystem, responses: Sequence[dict], tz: tzinfo | None = None) -> list[Slot]:
-    """AC power per quarter hour from one API response per roof plane.
+def compute_curve(system: PvSystem, responses: Sequence[dict], tz: tzinfo | None = None,
+                  block_name: str = "minutely_15", step: timedelta = QUARTER) -> list[Slot]:
+    """AC power per period from one API response per roof plane.
 
-    Radiation is the mean of the preceding 15 minutes, so a value stamped T
-    describes the quarter hour starting at T - 15 min.
+    Radiation is the mean of the preceding period, so a value stamped T
+    describes the period starting at T - step (15 minutes, or one hour for the
+    "hourly" block of archived forecasts).
     """
     if len(responses) != len(system.arrays):
         raise ValueError("one response per roof plane is required")
     series = []
     for response in responses:
-        block = response.get("minutely_15") or {}
+        block = response.get(block_name) or {}
         times = block.get("time") or []
         series.append((
             {t: g for t, g in zip(times, block.get("global_tilted_irradiance") or [])},
             {t: c for t, c in zip(times, block.get("temperature_2m") or [])},
         ))
-    base_times = (responses[0].get("minutely_15") or {}).get("time") or []
+    base_times = (responses[0].get(block_name) or {}).get("time") or []
     slots: list[Slot] = []
     for t in base_times:
-        start = datetime.fromisoformat(t).replace(tzinfo=timezone.utc) - QUARTER
+        start = datetime.fromisoformat(t).replace(tzinfo=timezone.utc) - step
         if tz is not None:
             start = start.astimezone(tz)
         dc = 0.0
@@ -217,6 +219,65 @@ def best_window(curve: Sequence[Slot], duration: timedelta, earliest: datetime, 
             best_usable = usable
             best = Window(start, end, round(usable, 3), round(sum(s.kw for s in run) * 0.25, 3))
     return best
+
+
+@dataclass(frozen=True)
+class AutoCorrection:
+    """Hourly correction factors learned from actual production."""
+
+    factors: tuple[float, ...]  # 24 values, by local hour, applied instead of the manual shading
+    hours: dict[int, dict]  # per local hour: days, median ratio, weight
+    days: int  # days with at least one valid hour
+
+
+# Learning parameters, shared by the integration and the tests.
+AUTO_MIN_DAYS = 3  # below this, an hour keeps its manual factor
+AUTO_PRIOR_DAYS = 7  # weight of the manual factor, in days (half way after 7 days)
+AUTO_RANGE = (0.3, 1.2)
+AUTO_MIN_SHARE = 0.05  # ignore hours forecast below 5 % of the peak power
+
+
+def auto_correction(forecast_kwh: dict[datetime, float], actual_kwh: dict[datetime, float],
+                    prior: Sequence[float], kwp: float, tz) -> AutoCorrection:
+    """Correction factor per local hour from hourly forecast and actual energy.
+
+    `forecast_kwh` is the archived forecast without shading, `actual_kwh` the
+    measured energy, both keyed by the start of the hour. For each local hour,
+    the factor moves from the manual one (`prior`) towards the median of the
+    daily ratios actual / forecast, by a weight that grows with the number of
+    valid days: w = days / (days + AUTO_PRIOR_DAYS), and 0 below AUTO_MIN_DAYS.
+    The median ignores a few odd days (inverter offline, unexpected sun).
+    """
+    ratios: dict[int, list[float]] = {h: [] for h in range(24)}
+    valid_days: set[date] = set()
+    by_day: dict[date, list[tuple[int, float, float]]] = {}
+    for hour, forecast in forecast_kwh.items():
+        actual = actual_kwh.get(hour)
+        if actual is None or forecast < AUTO_MIN_SHARE * kwp:
+            continue
+        local = hour.astimezone(tz)
+        by_day.setdefault(local.date(), []).append((local.hour, forecast, actual))
+    for day, rows in by_day.items():
+        # A day producing almost nothing while sun was forecast is an outage, not shading.
+        if sum(a for _, _, a in rows) < 0.05 * sum(f for _, f, _ in rows):
+            continue
+        valid_days.add(day)
+        for h, forecast, actual in rows:
+            ratios[h].append(min(max(actual / forecast, 0.0), 2.0))
+    factors = list(prior)
+    hours: dict[int, dict] = {}
+    for h, values in ratios.items():
+        if not values:
+            continue
+        values.sort()
+        n = len(values)
+        median = values[n // 2] if n % 2 else (values[n // 2 - 1] + values[n // 2]) / 2
+        weight = n / (n + AUTO_PRIOR_DAYS) if n >= AUTO_MIN_DAYS else 0.0
+        if weight:
+            value = prior[h] + (median - prior[h]) * weight
+            factors[h] = round(min(max(value, AUTO_RANGE[0]), AUTO_RANGE[1]), 3)
+        hours[h] = {"days": n, "median_ratio": round(median, 3), "weight": round(weight, 2)}
+    return AutoCorrection(tuple(factors), hours, len(valid_days))
 
 
 def parse_shading(text: str) -> tuple[float, ...]:

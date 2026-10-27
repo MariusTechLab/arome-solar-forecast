@@ -16,6 +16,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from .const import (
     AROME_LATITUDE,
     AROME_LONGITUDE,
+    CONF_AUTO_CORRECTION,
     CONF_AZIMUTH,
     CONF_AZIMUTH_2,
     CONF_AZIMUTH_3,
@@ -26,6 +27,7 @@ from .const import (
     CONF_KWP_2,
     CONF_KWP_3,
     CONF_MODEL,
+    CONF_PRODUCTION_ENTITY,
     CONF_SCAN_MINUTES,
     CONF_SHADING,
     CONF_SYSTEM_EFFICIENCY,
@@ -95,6 +97,9 @@ def _system_schema(d: dict[str, Any], hass_lat: float, hass_lon: float, first_st
         vol.Required(CONF_CELL_HEATING, default=d.get(CONF_CELL_HEATING, DEFAULT_CELL_HEATING)):
             _number(0, 0.06, 0.001, "°C/(W/m²)"),
         vol.Optional(CONF_SHADING, description={"suggested_value": d.get(CONF_SHADING, "")}): str,
+        vol.Required(CONF_AUTO_CORRECTION, default=d.get(CONF_AUTO_CORRECTION, False)): selector.BooleanSelector(),
+        vol.Optional(CONF_PRODUCTION_ENTITY, description={"suggested_value": d.get(CONF_PRODUCTION_ENTITY)}):
+            selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class=["energy", "power"])),
         vol.Required(CONF_SCAN_MINUTES, default=d.get(CONF_SCAN_MINUTES, DEFAULT_SCAN_MINUTES)):
             _number(10, 60, 5, "min"),
     })
@@ -110,6 +115,9 @@ async def _validate(flow: ConfigFlow | OptionsFlow, data: dict[str, Any]) -> tup
         except ValueError:
             errors[CONF_SHADING] = "invalid_shading"
             return errors, {}
+    if data.get(CONF_AUTO_CORRECTION) and not data.get(CONF_PRODUCTION_ENTITY):
+        errors[CONF_PRODUCTION_ENTITY] = "production_required"
+        return errors, {}
     lat, lon, model = float(data[CONF_LATITUDE]), float(data[CONF_LONGITUDE]), data[CONF_MODEL]
     if model.startswith("meteofrance_arome") and not (
         AROME_LATITUDE[0] <= lat <= AROME_LATITUDE[1] and AROME_LONGITUDE[0] <= lon <= AROME_LONGITUDE[1]

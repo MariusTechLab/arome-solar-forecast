@@ -163,6 +163,32 @@ default name and English: `sensor.arome_solar_forecast_energy_today`...
 Action `arome_solar_forecast.get_forecast` (`days`, `resolution`: `30min` or
 `15min`) returns `{model, updated, forecast: [{period_start, pv_estimate}]}`.
 
+### Automatic correction
+
+In **Configure**, tick **Automatic correction** and pick your PV production
+sensor (energy in kWh, total or daily, or power in W or kW, with long-term
+statistics). Every night at 03:17, and at startup, the integration compares
+the archived AROME forecasts of the last 14 days with your actual production,
+hour by hour, and learns a correction factor for each hour of the day. It
+captures shading (trees, buildings), soiling or a capacity lower than
+declared, as Solcast's automated dampening does, without using any API quota.
+
+It is careful while data is scarce:
+
+- the starting point is your manual shading factors (1 by default);
+- no change for an hour until 3 days of data exist for it;
+- then a gradual move towards the measured value: weight = days / (days + 7),
+  about half way after 7 days and two thirds after 14;
+- the median of the daily ratios is used, so an inverter outage or one
+  unexpectedly sunny day does not pull the factor;
+- days producing almost nothing while sun was forecast are treated as outages
+  and skipped; hours forecast below 5 % of the peak power are ignored;
+- factors stay between 0.3 and 1.2.
+
+The diagnostic sensor **Correction factor** shows the mean factor; its
+attributes give the factor, number of days, median ratio and weight for each
+hour. The factors are saved and survive a restart.
+
 ### Best time to run an appliance
 
 Action `arome_solar_forecast.find_best_window` finds the run of consecutive
@@ -196,8 +222,8 @@ with a time trigger on `window.start`.
 | `sensor.pv_forecast_arome_power_now` | W | forecast power for the current quarter hour |
 | `sensor.pv_forecast_arome_power_in_1_hour` | W | forecast power one hour from now |
 | `sensor.pv_forecast_arome_peak_today` | W | highest quarter hour; attribute `peak_time` |
-| `sensor.pv_forecast_arome_curve` | — | attribute `detailedForecast15`: 192 quarter hours |
-| `sensor.pv_forecast_arome_raw_data` | — | Open-Meteo response (technical) |
+| `sensor.pv_forecast_arome_curve` | - | attribute `detailedForecast15`: 192 quarter hours |
+| `sensor.pv_forecast_arome_raw_data` | - | Open-Meteo response (technical) |
 
 Details: [how it works](docs/how-it-works.md).
 

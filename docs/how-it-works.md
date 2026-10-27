@@ -48,7 +48,7 @@ AC power         = min(inverter AC limit, Σ DC power × inverter_efficiency)
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `kwp` | — | peak power of the modules of that plane (DC) |
+| `kwp` | - | peak power of the modules of that plane (DC) |
 | `tilt` | 30 | tilt from horizontal, degrees |
 | `azimuth` | 180 | compass direction the panels face (see below) |
 | `--inverter-kw` | none | AC limit of the inverter(s): clipping |

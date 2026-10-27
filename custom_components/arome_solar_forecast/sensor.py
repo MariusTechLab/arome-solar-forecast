@@ -128,10 +128,18 @@ SENSORS: tuple[AromeSensorDescription, ...] = (
 )
 
 
+CORRECTION = AromeSensorDescription(
+    key="correction", translation_key="correction", entity_category=EntityCategory.DIAGNOSTIC,
+    suggested_display_precision=2, value=lambda d, now: None)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: AromeConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(AromeSensor(coordinator, entry, description) for description in SENSORS)
+    entities: list[SensorEntity] = [AromeSensor(coordinator, entry, description) for description in SENSORS]
+    if coordinator.auto_enabled:
+        entities.append(AromeCorrectionSensor(coordinator, entry, CORRECTION))
+    async_add_entities(entities)
 
 
 class AromeSensor(CoordinatorEntity[AromeForecastCoordinator], SensorEntity):
@@ -180,3 +188,33 @@ class AromeSensor(CoordinatorEntity[AromeForecastCoordinator], SensorEntity):
         if not self.coordinator.data or not self.entity_description.attributes:
             return None
         return self.entity_description.attributes(self.coordinator.data, dt_util.now())
+
+
+class AromeCorrectionSensor(AromeSensor):
+    """Automatic correction: mean daytime factor, details in the attributes."""
+
+    @property
+    def native_value(self) -> float | None:
+        correction = self.coordinator.correction
+        if not correction or not correction.hours:
+            return None
+        values = [correction.factors[h] for h in correction.hours]
+        return round(sum(values) / len(values), 3)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        c = self.coordinator
+        attributes: dict[str, Any] = {
+            "production_entity": c.production_entity,
+            "manual_factors": {f"{h:02d}": f for h, f in enumerate(c.manual_shading) if f != 1.0},
+        }
+        if c.correction:
+            attributes.update({
+                "days": c.correction.days,
+                "factors": {f"{h:02d}": c.correction.factors[h] for h in sorted(c.correction.hours)},
+                "hours": {f"{h:02d}": v for h, v in sorted(c.correction.hours.items())},
+                "updated": c.correction_updated.isoformat() if c.correction_updated else None,
+            })
+        if c.correction_error:
+            attributes["last_error"] = c.correction_error
+        return attributes

@@ -32,4 +32,13 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: AromeCo
         "first_slot": curve[0].start.isoformat() if curve else None,
         "last_slot": curve[-1].start.isoformat() if curve else None,
         "max_kw": max((s.kw for s in curve), default=None),
+        "auto_correction": {
+            "enabled": coordinator.auto_enabled,
+            "manual_factors": list(coordinator.manual_shading),
+            "factors": list(coordinator.correction.factors) if coordinator.correction else None,
+            "days": coordinator.correction.days if coordinator.correction else None,
+            "hours": coordinator.correction.hours if coordinator.correction else None,
+            "updated": coordinator.correction_updated.isoformat() if coordinator.correction_updated else None,
+            "last_error": coordinator.correction_error,
+        },
     }
