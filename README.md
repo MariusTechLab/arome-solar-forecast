@@ -163,6 +163,29 @@ default name and English: `sensor.arome_solar_forecast_energy_today`...
 Action `arome_solar_forecast.get_forecast` (`days`, `resolution`: `30min` or
 `15min`) returns `{model, updated, forecast: [{period_start, pv_estimate}]}`.
 
+### Best time to run an appliance
+
+Action `arome_solar_forecast.find_best_window` finds the run of consecutive
+quarter hours with the most usable solar energy, today (from now on) or
+tomorrow:
+
+```yaml
+action: arome_solar_forecast.find_best_window
+data:
+  duration: 75          # minutes, rounded up to a quarter hour
+  day: tomorrow         # today or tomorrow
+  power_kw: 2.0         # optional: solar above the appliance power is not counted
+  base_load_kw: 0.35    # optional: house consumption subtracted first
+  after: "10:00:00"     # optional bounds
+  before: "17:00:00"
+response_variable: window
+```
+
+It returns `found`, `start`, `end`, `duration_minutes`, `usable_energy_kwh`
+and `solar_energy_kwh`. The earliest window wins a tie. Example automation:
+plan the dishwasher in the evening for tomorrow's best window, then start it
+with a time trigger on `window.start`.
+
 ### YAML package
 
 | Entity | Unit | Description |

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+- New action `arome_solar_forecast.find_best_window`: best run of consecutive
+  quarter hours for an appliance of a given duration, today or tomorrow, with
+  optional appliance power cap, base load and time bounds. Returns start, end,
+  usable and total solar energy.
+
 ## 1.1.0
 
 - New Home Assistant integration, installable with HACS (`custom_components/arome_solar_forecast`):

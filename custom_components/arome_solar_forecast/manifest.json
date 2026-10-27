@@ -1,7 +1,9 @@
 {
   "domain": "arome_solar_forecast",
   "name": "AROME Solar Forecast",
-  "codeowners": ["@MariusTechLab"],
+  "codeowners": [
+    "@MariusTechLab"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/MariusTechLab/arome-solar-forecast",
@@ -9,5 +11,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/MariusTechLab/arome-solar-forecast/issues",
   "requirements": [],
-  "version": "1.1.0"
+  "version": "1.2.0"
 }

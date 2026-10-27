@@ -178,6 +178,30 @@ Assistant. Avec le nom par défaut et Home Assistant en français :
 L'action `arome_solar_forecast.get_forecast` (`days`, `resolution` : `30min`
 ou `15min`) renvoie `{model, updated, forecast: [{period_start, pv_estimate}]}`.
 
+### Meilleure heure pour lancer un appareil
+
+L'action `arome_solar_forecast.find_best_window` trouve la suite de quarts
+d'heure consécutifs qui offre le plus d'énergie solaire utilisable, aujourd'hui
+(à partir de maintenant) ou demain :
+
+```yaml
+action: arome_solar_forecast.find_best_window
+data:
+  duration: 75          # minutes, arrondies au quart d'heure supérieur
+  day: tomorrow         # today (aujourd'hui) ou tomorrow (demain)
+  power_kw: 2.0         # facultatif : le solaire au-delà de la puissance de l'appareil n'est pas compté
+  base_load_kw: 0.35    # facultatif : consommation de la maison retirée d'abord
+  after: "10:00:00"     # bornes facultatives
+  before: "17:00:00"
+response_variable: window
+```
+
+Elle renvoie `found`, `start`, `end`, `duration_minutes`, `usable_energy_kwh`
+et `solar_energy_kwh`. À égalité, la fenêtre la plus tôt l'emporte. Exemple
+d'usage : le soir, chercher la meilleure fenêtre de demain pour le
+lave-vaisselle, puis le lancer avec un déclencheur horaire sur
+`window.start`.
+
 ### Package YAML
 
 Avec `--lang fr` :

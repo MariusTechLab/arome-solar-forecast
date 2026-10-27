@@ -3,7 +3,7 @@
 from typing import Final
 
 DOMAIN: Final = "arome_solar_forecast"
-VERSION: Final = "1.1.0"
+VERSION: Final = "1.2.0"
 API_URL: Final = "https://api.open-meteo.com/v1/forecast"
 ATTRIBUTION: Final = "Weather data by Open-Meteo.com (CC BY 4.0), model by Météo-France"
 

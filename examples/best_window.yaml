@@ -1,5 +1,6 @@
-# Best start time today for an appliance of a given duration and power.
-# Add to the same package (or another one). Uses the quarter-hour curve.
+# Best start time today for an appliance of a given duration and power, for the
+# YAML package. With the integration, use the arome_solar_forecast.find_best_window
+# action instead (see the README). Uses the quarter-hour curve.
 #
 # Score of a start time = forecast PV energy usable by the appliance during its
 # run: sum over the run of min(forecast power - house base load, appliance power).

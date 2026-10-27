@@ -90,6 +90,53 @@ class CurveTest(unittest.TestCase):
         self.assertFalse(fc.has_irradiance({}))
 
 
+class BestWindowTest(unittest.TestCase):
+    def setUp(self) -> None:
+        system = fc.PvSystem(arrays=(fc.PvArray(3, 30, 180),), inverter_kw=2.5)
+        self.curve = fc.compute_curve(system, [response(fixture(1100))], PARIS)
+        self.day_start = datetime(2026, 6, 21, 0, 0, tzinfo=PARIS)
+        self.day_end = self.day_start + timedelta(days=1)
+
+    def brute_force(self, minutes: int, earliest, latest, power=None, base=0.0):
+        steps = -(-minutes // 15)
+        best = None
+        for i in range(len(self.curve) - steps + 1):
+            run = self.curve[i:i + steps]
+            if run[0].start < earliest or run[-1].start + fc.QUARTER > latest:
+                continue
+            usable = sum((min(max(s.kw - base, 0), power) if power else max(s.kw - base, 0)) * 0.25 for s in run)
+            if best is None or usable > best[1] + 1e-9:
+                best = (run[0].start, usable)
+        return best
+
+    def test_75_minutes_matches_brute_force(self) -> None:
+        w = fc.best_window(self.curve, timedelta(minutes=75), self.day_start, self.day_end)
+        start, usable = self.brute_force(75, self.day_start, self.day_end)
+        self.assertEqual(w.start, start)
+        self.assertEqual(w.end - w.start, timedelta(minutes=75))
+        self.assertAlmostEqual(w.usable_kwh, usable, places=3)
+        self.assertAlmostEqual(w.solar_kwh, w.usable_kwh, places=3)  # no cap, no base load
+
+    def test_power_cap_and_base_load(self) -> None:
+        w = fc.best_window(self.curve, timedelta(minutes=60), self.day_start, self.day_end,
+                           power_kw=1.0, base_load_kw=0.3)
+        start, usable = self.brute_force(60, self.day_start, self.day_end, power=1.0, base=0.3)
+        self.assertEqual(w.start, start)  # earliest of the windows that reach the cap
+        self.assertAlmostEqual(w.usable_kwh, 1.0, places=3)
+        self.assertGreater(w.solar_kwh, w.usable_kwh)
+
+    def test_bounds_rounding_and_no_window(self) -> None:
+        after = datetime(2026, 6, 21, 15, 0, tzinfo=PARIS)
+        before = datetime(2026, 6, 21, 18, 0, tzinfo=PARIS)
+        w = fc.best_window(self.curve, timedelta(minutes=70), after, before)
+        self.assertGreaterEqual(w.start, after)
+        self.assertLessEqual(w.end, before)
+        self.assertEqual(w.end - w.start, timedelta(minutes=75))  # 70 min rounded up
+        night = datetime(2026, 6, 21, 23, 0, tzinfo=PARIS)
+        self.assertIsNone(fc.best_window(self.curve, timedelta(minutes=30), night, self.day_end))
+        self.assertIsNone(fc.best_window(self.curve, timedelta(hours=4), after, before))  # does not fit
+
+
 class HelpersTest(unittest.TestCase):
     def test_azimuth_and_params(self) -> None:
         self.assertEqual(fc.PvArray(1, 18, 165).openmeteo_azimuth, -15)
@@ -120,6 +167,15 @@ class IntegrationFilesTest(unittest.TestCase):
         names = set(strings["entity"]["sensor"])
         keys = set(re_findall(r'translation_key="([a-z0-9_]+)"', (self.BASE / "sensor.py").read_text(encoding="utf-8")))
         self.assertEqual(keys, names)
+
+    def test_every_action_field_is_translated(self) -> None:
+        import yaml
+
+        services = yaml.safe_load((self.BASE / "services.yaml").read_text(encoding="utf-8"))
+        for lang_file in (self.BASE / "strings.json", self.BASE / "translations" / "fr.json"):
+            texts = json.loads(lang_file.read_text(encoding="utf-8"))["services"]
+            for service, spec in services.items():
+                self.assertEqual(set(spec["fields"]), set(texts[service]["fields"]), f"{lang_file.name} {service}")
 
     def test_manifest_version_matches_const(self) -> None:
         manifest = json.loads((self.BASE / "manifest.json").read_text(encoding="utf-8"))

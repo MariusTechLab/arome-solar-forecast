@@ -178,6 +178,47 @@ def hourly_wh(curve: Iterable[Slot]) -> dict[datetime, float]:
     return {h: round(v, 1) for h, v in sorted(out.items())}
 
 
+@dataclass(frozen=True)
+class Window:
+    """Best run of consecutive quarter hours."""
+
+    start: datetime
+    end: datetime
+    usable_kwh: float  # solar energy the load can use (capped, minus base load)
+    solar_kwh: float  # total forecast PV energy in the window
+
+
+def best_window(curve: Sequence[Slot], duration: timedelta, earliest: datetime, latest: datetime,
+                power_kw: float | None = None, base_load_kw: float = 0.0) -> Window | None:
+    """Window of `duration` (rounded up to quarter hours) between `earliest`
+    and `latest` with the most usable solar energy.
+
+    Usable energy per quarter hour = min(forecast - base load, load power),
+    never negative; without `power_kw`, the whole surplus counts. The
+    earliest window wins a tie. Returns None when no window fits or none has
+    any usable energy.
+    """
+    steps = max(1, -(-int(duration.total_seconds()) // int(QUARTER.total_seconds())))
+    slots = sorted(curve, key=lambda s: s.start)
+    best: Window | None = None
+    best_usable = 0.0
+    for i in range(len(slots) - steps + 1):
+        run = slots[i:i + steps]
+        start, end = run[0].start, run[-1].start + QUARTER
+        if start < earliest or end > latest:
+            continue
+        if any(b.start - a.start != QUARTER for a, b in zip(run, run[1:])):
+            continue  # gap in the forecast
+        usable = 0.0
+        for s in run:
+            surplus = max(s.kw - base_load_kw, 0.0)
+            usable += (min(surplus, power_kw) if power_kw else surplus) * 0.25
+        if usable > best_usable + 1e-9:
+            best_usable = usable
+            best = Window(start, end, round(usable, 3), round(sum(s.kw for s in run) * 0.25, 3))
+    return best
+
+
 def parse_shading(text: str) -> tuple[float, ...]:
     """'8=0.7, 17=0.5' -> 24 factors. Raises ValueError on bad input."""
     factors = [1.0] * 24

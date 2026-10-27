@@ -84,23 +84,55 @@
         "knmi_harmonie_arome_europe": "KNMI Harmonie AROME (Benelux and neighbours, 2 days)",
         "ecmwf_ifs": "ECMWF IFS (worldwide, 7 days)"
       }
+    },
+    "day": {
+      "options": {
+        "today": "Today",
+        "tomorrow": "Tomorrow"
+      }
     }
   },
   "entity": {
     "sensor": {
-      "energy_today": {"name": "Energy today"},
-      "energy_tomorrow": {"name": "Energy tomorrow"},
-      "energy_remaining_today": {"name": "Energy remaining today"},
-      "energy_current_hour": {"name": "Energy current hour"},
-      "energy_next_hour": {"name": "Energy next hour"},
-      "power_now": {"name": "Power now"},
-      "power_in_30_minutes": {"name": "Power in 30 minutes"},
-      "power_in_1_hour": {"name": "Power in 1 hour"},
-      "peak_power_today": {"name": "Peak power today"},
-      "peak_time_today": {"name": "Peak time today"},
-      "peak_power_tomorrow": {"name": "Peak power tomorrow"},
-      "peak_time_tomorrow": {"name": "Peak time tomorrow"},
-      "last_update": {"name": "Last update"}
+      "energy_today": {
+        "name": "Energy today"
+      },
+      "energy_tomorrow": {
+        "name": "Energy tomorrow"
+      },
+      "energy_remaining_today": {
+        "name": "Energy remaining today"
+      },
+      "energy_current_hour": {
+        "name": "Energy current hour"
+      },
+      "energy_next_hour": {
+        "name": "Energy next hour"
+      },
+      "power_now": {
+        "name": "Power now"
+      },
+      "power_in_30_minutes": {
+        "name": "Power in 30 minutes"
+      },
+      "power_in_1_hour": {
+        "name": "Power in 1 hour"
+      },
+      "peak_power_today": {
+        "name": "Peak power today"
+      },
+      "peak_time_today": {
+        "name": "Peak time today"
+      },
+      "peak_power_tomorrow": {
+        "name": "Peak power tomorrow"
+      },
+      "peak_time_tomorrow": {
+        "name": "Peak time tomorrow"
+      },
+      "last_update": {
+        "name": "Last update"
+      }
     }
   },
   "services": {
@@ -108,13 +140,58 @@
       "name": "Get forecast",
       "description": "Returns the PV power forecast (kW) per half hour or quarter hour, in the Solcast format.",
       "fields": {
-        "config_entry_id": {"name": "PV system", "description": "Optional when only one system is configured."},
-        "days": {"name": "Days", "description": "Number of days from today."},
-        "resolution": {"name": "Resolution", "description": "30min (Solcast format) or 15min."}
+        "config_entry_id": {
+          "name": "PV system",
+          "description": "Optional when only one system is configured."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Number of days from today."
+        },
+        "resolution": {
+          "name": "Resolution",
+          "description": "30min (Solcast format) or 15min."
+        }
+      }
+    },
+    "find_best_window": {
+      "name": "Find best window",
+      "description": "Finds the run of consecutive quarter hours with the most usable solar energy, for an appliance of a given duration and power.",
+      "fields": {
+        "config_entry_id": {
+          "name": "PV system",
+          "description": "Optional when only one system is configured."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Run time in minutes, rounded up to a quarter hour."
+        },
+        "day": {
+          "name": "Day",
+          "description": "Today (from now on) or tomorrow."
+        },
+        "power_kw": {
+          "name": "Appliance power",
+          "description": "Solar power above this value is not counted. Leave empty to count all the surplus."
+        },
+        "base_load_kw": {
+          "name": "Base load",
+          "description": "House consumption subtracted from the forecast before counting."
+        },
+        "after": {
+          "name": "Not before",
+          "description": "Earliest start time."
+        },
+        "before": {
+          "name": "Not after",
+          "description": "Latest end time."
+        }
       }
     }
   },
   "exceptions": {
-    "no_entry": {"message": "No loaded AROME Solar Forecast entry matches this request."}
+    "no_entry": {
+      "message": "No loaded AROME Solar Forecast entry matches this request."
+    }
   }
 }

@@ -84,23 +84,55 @@
         "knmi_harmonie_arome_europe": "KNMI Harmonie AROME (Benelux et pays voisins, 2 jours)",
         "ecmwf_ifs": "ECMWF IFS (monde, 7 jours)"
       }
+    },
+    "day": {
+      "options": {
+        "today": "Aujourd'hui",
+        "tomorrow": "Demain"
+      }
     }
   },
   "entity": {
     "sensor": {
-      "energy_today": {"name": "Énergie aujourd'hui"},
-      "energy_tomorrow": {"name": "Énergie demain"},
-      "energy_remaining_today": {"name": "Énergie restante aujourd'hui"},
-      "energy_current_hour": {"name": "Énergie heure en cours"},
-      "energy_next_hour": {"name": "Énergie heure suivante"},
-      "power_now": {"name": "Puissance maintenant"},
-      "power_in_30_minutes": {"name": "Puissance dans 30 minutes"},
-      "power_in_1_hour": {"name": "Puissance dans 1 heure"},
-      "peak_power_today": {"name": "Pic de puissance aujourd'hui"},
-      "peak_time_today": {"name": "Heure du pic aujourd'hui"},
-      "peak_power_tomorrow": {"name": "Pic de puissance demain"},
-      "peak_time_tomorrow": {"name": "Heure du pic demain"},
-      "last_update": {"name": "Dernière mise à jour"}
+      "energy_today": {
+        "name": "Énergie aujourd'hui"
+      },
+      "energy_tomorrow": {
+        "name": "Énergie demain"
+      },
+      "energy_remaining_today": {
+        "name": "Énergie restante aujourd'hui"
+      },
+      "energy_current_hour": {
+        "name": "Énergie heure en cours"
+      },
+      "energy_next_hour": {
+        "name": "Énergie heure suivante"
+      },
+      "power_now": {
+        "name": "Puissance maintenant"
+      },
+      "power_in_30_minutes": {
+        "name": "Puissance dans 30 minutes"
+      },
+      "power_in_1_hour": {
+        "name": "Puissance dans 1 heure"
+      },
+      "peak_power_today": {
+        "name": "Pic de puissance aujourd'hui"
+      },
+      "peak_time_today": {
+        "name": "Heure du pic aujourd'hui"
+      },
+      "peak_power_tomorrow": {
+        "name": "Pic de puissance demain"
+      },
+      "peak_time_tomorrow": {
+        "name": "Heure du pic demain"
+      },
+      "last_update": {
+        "name": "Dernière mise à jour"
+      }
     }
   },
   "services": {
@@ -108,13 +140,58 @@
       "name": "Obtenir la prévision",
       "description": "Renvoie la prévision de puissance photovoltaïque (kW) par demi-heure ou par quart d'heure, au format Solcast.",
       "fields": {
-        "config_entry_id": {"name": "Installation", "description": "Facultatif quand une seule installation est configurée."},
-        "days": {"name": "Jours", "description": "Nombre de jours à partir d'aujourd'hui."},
-        "resolution": {"name": "Résolution", "description": "30min (format Solcast) ou 15min."}
+        "config_entry_id": {
+          "name": "Installation",
+          "description": "Facultatif quand une seule installation est configurée."
+        },
+        "days": {
+          "name": "Jours",
+          "description": "Nombre de jours à partir d'aujourd'hui."
+        },
+        "resolution": {
+          "name": "Résolution",
+          "description": "30min (format Solcast) ou 15min."
+        }
+      }
+    },
+    "find_best_window": {
+      "name": "Trouver la meilleure fenêtre",
+      "description": "Trouve la suite de quarts d'heure consécutifs qui offre le plus d'énergie solaire utilisable, pour un appareil d'une durée et d'une puissance données.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Installation",
+          "description": "Facultatif quand une seule installation est configurée."
+        },
+        "duration": {
+          "name": "Durée",
+          "description": "Durée de fonctionnement en minutes, arrondie au quart d'heure supérieur."
+        },
+        "day": {
+          "name": "Jour",
+          "description": "Aujourd'hui (à partir de maintenant) ou demain."
+        },
+        "power_kw": {
+          "name": "Puissance de l'appareil",
+          "description": "La puissance solaire au-delà de cette valeur n'est pas comptée. Laisser vide pour compter tout le surplus."
+        },
+        "base_load_kw": {
+          "name": "Consommation de fond",
+          "description": "Consommation de la maison retirée de la prévision avant le calcul."
+        },
+        "after": {
+          "name": "Pas avant",
+          "description": "Heure de début au plus tôt."
+        },
+        "before": {
+          "name": "Pas après",
+          "description": "Heure de fin au plus tard."
+        }
       }
     }
   },
   "exceptions": {
-    "no_entry": {"message": "Aucune installation de prévision solaire AROME chargée ne correspond à cette demande."}
+    "no_entry": {
+      "message": "Aucune installation de prévision solaire AROME chargée ne correspond à cette demande."
+    }
   }
 }
