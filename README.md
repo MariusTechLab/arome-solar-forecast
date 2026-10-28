@@ -183,7 +183,9 @@ It is careful while data is scarce:
   unexpectedly sunny day does not pull the factor;
 - days producing almost nothing while sun was forecast are treated as outages
   and skipped; hours forecast below 5 % of the peak power are ignored;
-- factors stay between 0.3 and 1.2.
+- factors stay between 0.3 and 1.2;
+- hours are counted in solar time (UTC), so the factors stay right across
+  daylight saving time changes; the sensor shows them with local hours.
 
 The diagnostic sensor **Correction factor** shows the mean factor; its
 attributes give the factor, number of days, median ratio and weight for each

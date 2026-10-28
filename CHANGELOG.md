@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.1
+
+- Automatic correction learned and applied by UTC hour (sun position) instead
+  of the local clock hour. Shading follows the sun: with local hours, a
+  daylight saving time change inside the 14-day window mixed two sun positions
+  and blurred the morning and late-afternoon factors. The sensor still shows
+  the factors with today's local hours. Factors saved by 1.3.0 are recomputed
+  at startup.
+
 ## 1.3.0
 
 - Automatic correction (option): learns a factor for each hour of the day from

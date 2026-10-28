@@ -124,14 +124,15 @@ class AromeForecastCoordinator(DataUpdateCoordinator[ForecastData]):
     def _apply_correction(self, correction: AutoCorrection, updated: datetime) -> None:
         self.correction = correction
         self.correction_updated = updated
-        self.system = replace(self.system, shading=correction.factors)
+        self.system = replace(self.system, solar_shading=correction.factors)
 
     async def async_load_correction(self) -> None:
         """Use the factors saved by the last run until the next one."""
         if not self.auto_enabled:
             return
         saved = await self._store.async_load()
-        if (saved and saved.get("entity") == self.production_entity
+        # Factors saved before 1.3.1 were by local hour: ignore them, they are recomputed at startup.
+        if (saved and saved.get("basis") == "utc" and saved.get("entity") == self.production_entity
                 and saved.get("manual") == list(self.manual_shading) and len(saved.get("factors", [])) == 24):
             hours = {int(h): v for h, v in saved.get("hours", {}).items()}
             updated = dt_util.parse_datetime(saved["updated"]) or dt_util.utcnow()
@@ -153,6 +154,7 @@ class AromeForecastCoordinator(DataUpdateCoordinator[ForecastData]):
         now = dt_util.utcnow()
         self._apply_correction(result, now)
         await self._store.async_save({
+            "basis": "utc",
             "entity": self.production_entity,
             "manual": list(self.manual_shading),
             "factors": list(result.factors),

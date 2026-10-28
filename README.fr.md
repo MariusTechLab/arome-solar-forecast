@@ -202,7 +202,9 @@ Tant qu'il y a peu de données, elle reste prudente :
 - les jours qui ne produisent presque rien alors que du soleil était prévu
   sont considérés comme des pannes et écartés ; les heures prévues sous 5 % de
   la puissance crête sont ignorées ;
-- les facteurs restent entre 0,3 et 1,2.
+- les facteurs restent entre 0,3 et 1,2 ;
+- les heures sont comptées en heure solaire (UTC) : les facteurs restent justes
+  lors des changements d'heure. Le capteur les affiche en heure locale.
 
 Le capteur de diagnostic **Facteur de correction** affiche le facteur moyen.
 Ses attributs donnent, pour chaque heure, le facteur, le nombre de jours, le

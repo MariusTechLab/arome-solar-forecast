@@ -77,7 +77,7 @@ async def compute_correction(hass: HomeAssistant, session: aiohttp.ClientSession
         _fetch_archive(session, latitude, longitude, model, array, first, last) for array in system.arrays
     ))
     # Forecast without any shading: the factors are learned from scratch on top of it.
-    raw_system = replace(system, shading=(1.0,) * 24)
+    raw_system = replace(system, shading=(1.0,) * 24, solar_shading=None)
     hourly = compute_curve(raw_system, archives, tz, block_name="hourly", step=timedelta(hours=1))
     forecast = {s.start.astimezone(timezone.utc): s.kw for s in hourly}
     start = datetime.combine(first, datetime.min.time(), tz)

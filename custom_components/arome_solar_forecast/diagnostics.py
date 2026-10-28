@@ -35,7 +35,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: AromeCo
         "auto_correction": {
             "enabled": coordinator.auto_enabled,
             "manual_factors": list(coordinator.manual_shading),
-            "factors": list(coordinator.correction.factors) if coordinator.correction else None,
+            "factors_by_utc_hour": list(coordinator.correction.factors) if coordinator.correction else None,
             "days": coordinator.correction.days if coordinator.correction else None,
             "hours": coordinator.correction.hours if coordinator.correction else None,
             "updated": coordinator.correction_updated.isoformat() if coordinator.correction_updated else None,

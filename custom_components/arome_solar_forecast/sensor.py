@@ -24,7 +24,7 @@ from homeassistant.util import dt as dt_util
 from . import AromeConfigEntry
 from .const import ATTRIBUTION, DOMAIN, VERSION
 from .coordinator import AromeForecastCoordinator, ForecastData
-from .forecast import covers_day, day_energy, energy_between, half_hours, peak, power_at, quarter_hours
+from .forecast import covers_day, local_hour_of_utc, day_energy, energy_between, half_hours, peak, power_at, quarter_hours
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -209,10 +209,13 @@ class AromeCorrectionSensor(AromeSensor):
             "manual_factors": {f"{h:02d}": f for h, f in enumerate(c.manual_shading) if f != 1.0},
         }
         if c.correction:
+            # Learned by UTC hour (sun position); shown with today's local clock hours.
+            today, tz = dt_util.now().date(), dt_util.get_default_time_zone()
+            local = {h: local_hour_of_utc(h, today, tz) for h in c.correction.hours}
             attributes.update({
                 "days": c.correction.days,
-                "factors": {f"{h:02d}": c.correction.factors[h] for h in sorted(c.correction.hours)},
-                "hours": {f"{h:02d}": v for h, v in sorted(c.correction.hours.items())},
+                "factors": {f"{local[h]:02d}": c.correction.factors[h] for h in sorted(local, key=local.get)},
+                "hours": {f"{local[h]:02d}": c.correction.hours[h] for h in sorted(local, key=local.get)},
                 "updated": c.correction_updated.isoformat() if c.correction_updated else None,
             })
         if c.correction_error:

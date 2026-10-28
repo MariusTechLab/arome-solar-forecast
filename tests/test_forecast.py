@@ -156,41 +156,69 @@ class AutoCorrectionTest(unittest.TestCase):
     def run_auto(self, forecast, actual, prior=None):
         return fc.auto_correction(forecast, actual, prior or (1.0,) * 24, 3.0, PARIS)
 
+    # History uses local hours in June (UTC + 2); results are by UTC hour: local 17 h = UTC 15 h.
     def test_no_correction_before_three_days(self) -> None:
         r = self.run_auto(*self.history(2, {17: 0.5}))
-        self.assertEqual(r.factors[17], 1.0)
-        self.assertEqual(r.hours[17]["weight"], 0.0)
+        self.assertEqual(r.factors[15], 1.0)
+        self.assertEqual(r.hours[15]["weight"], 0.0)
         self.assertEqual(r.days, 2)
 
     def test_gradual_weight(self) -> None:
         for days, expected in ((3, 1 - 0.5 * 3 / 10), (7, 1 - 0.5 * 7 / 14), (14, 1 - 0.5 * 14 / 21)):
             r = self.run_auto(*self.history(days, {17: 0.5}))
-            self.assertAlmostEqual(r.factors[17], round(expected, 3), places=3, msg=f"{days} days")
-            self.assertEqual(r.factors[12], 1.0)  # no gap at noon, no change
+            self.assertAlmostEqual(r.factors[15], round(expected, 3), places=3, msg=f"{days} days")
+            self.assertEqual(r.factors[10], 1.0)  # no gap at noon, no change
 
     def test_starts_from_manual_factor(self) -> None:
         prior = [1.0] * 24
         prior[17] = 0.4
         r = self.run_auto(*self.history(7, {17: 0.5}), prior=tuple(prior))
-        self.assertAlmostEqual(r.factors[17], 0.4 + (0.5 - 0.4) * 0.5, places=3)
+        self.assertAlmostEqual(r.factors[15], 0.4 + (0.5 - 0.4) * 0.5, places=3)
         r = self.run_auto(*self.history(2, {17: 0.5}), prior=tuple(prior))
-        self.assertEqual(r.factors[17], 0.4)  # too few days: manual factor kept
+        self.assertEqual(r.factors[15], 0.4)  # too few days: manual factor kept
 
     def test_outage_and_odd_days_are_ignored(self) -> None:
         r = self.run_auto(*self.history(10, {17: 0.5}, outage_days=(3, 4)))
         self.assertEqual(r.days, 8)
-        self.assertEqual(r.hours[17]["days"], 8)
+        self.assertEqual(r.hours[15]["days"], 8)
         r = self.run_auto(*self.history(10, {17: 0.5}, odd_days={1: 1.8}))
-        self.assertEqual(r.hours[17]["median_ratio"], 0.5)  # one very sunny surprise does not move the median
+        self.assertEqual(r.hours[15]["median_ratio"], 0.5)  # one very sunny surprise does not move the median
 
     def test_low_forecast_hours_and_bounds(self) -> None:
         forecast, actual = self.history(14, {9: 0.05, 11: 1.9})
         dawn = datetime(2026, 6, 2, 6, tzinfo=PARIS).astimezone(timezone.utc)
         forecast[dawn], actual[dawn] = 0.1, 0.0  # under 5 % of 3 kWp: ignored
         r = self.run_auto(forecast, actual)
-        self.assertNotIn(6, r.hours)
-        self.assertAlmostEqual(r.factors[9], round(1 - 0.95 * 14 / 21, 3), places=3)
-        self.assertEqual(r.factors[11], fc.AUTO_RANGE[1])  # 1.6 capped at 1.2
+        self.assertNotIn(4, r.hours)
+        self.assertAlmostEqual(r.factors[7], round(1 - 0.95 * 14 / 21, 3), places=3)
+        self.assertEqual(r.factors[9], fc.AUTO_RANGE[1])  # 1.6 capped at 1.2
+
+    def test_daylight_saving_change_does_not_mix_sun_positions(self) -> None:
+        # Shade at 14-15 h UTC every day, from 18 to 31 October (the clocks go back on the 25th).
+        forecast, actual = {}, {}
+        for d in range(14):
+            for h in range(6, 17):  # UTC hours
+                t = datetime(2026, 10, 18 + d, h, tzinfo=timezone.utc)
+                forecast[t] = 1.5
+                actual[t] = 1.5 * (0.3 if h == 14 else 1.0)
+        r = self.run_auto(forecast, actual)
+        self.assertEqual(r.hours[14]["days"], 14)
+        self.assertAlmostEqual(r.factors[14], round(1 - 0.7 * 14 / 21, 3), places=3)
+        self.assertEqual(r.factors[13], 1.0)
+        self.assertEqual(r.factors[15], 1.0)  # by local hour, 15 h and 16 h would both have been blurred
+        self.assertEqual(fc.local_hour_of_utc(14, date(2026, 10, 20), PARIS), 16)
+        self.assertEqual(fc.local_hour_of_utc(14, date(2026, 10, 28), PARIS), 15)
+
+    def test_solar_shading_follows_utc_hour(self) -> None:
+        data = fixture(900)
+        solar = [1.0] * 24
+        solar[14] = 0.5
+        system = fc.PvSystem(arrays=(fc.PvArray(3, 30, 180),), shading=(0.1,) * 24, solar_shading=tuple(solar))
+        curve = fc.compute_curve(system, [response(data)], PARIS)
+        plain = fc.compute_curve(fc.PvSystem(arrays=(fc.PvArray(3, 30, 180),)), [response(data)], PARIS)
+        for s, p in zip(curve, plain):
+            expected = p.kw * (0.5 if s.start.astimezone(timezone.utc).hour == 14 else 1.0)
+            self.assertAlmostEqual(s.kw, expected, places=3)  # manual local shading ignored once learned
 
     def test_hourly_archive_curve(self) -> None:
         hourly = {"time": [f"2026-06-21T{h:02d}:00" for h in range(24)],

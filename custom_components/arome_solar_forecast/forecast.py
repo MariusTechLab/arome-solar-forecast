@@ -38,7 +38,10 @@ class PvSystem:
     inverter_efficiency: float = 0.96
     temp_coefficient: float = -0.004
     cell_heating: float = 0.03
-    shading: tuple[float, ...] = field(default_factory=lambda: (1.0,) * 24)
+    shading: tuple[float, ...] = field(default_factory=lambda: (1.0,) * 24)  # by local hour (manual)
+    # Learned factors by UTC hour, i.e. by sun position, so that they stay right
+    # across daylight saving time changes. When set, they replace `shading`.
+    solar_shading: tuple[float, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -92,6 +95,7 @@ def compute_curve(system: PvSystem, responses: Sequence[dict], tz: tzinfo | None
     slots: list[Slot] = []
     for t in base_times:
         start = datetime.fromisoformat(t).replace(tzinfo=timezone.utc) - step
+        utc_hour = start.hour
         if tz is not None:
             start = start.astimezone(tz)
         dc = 0.0
@@ -102,7 +106,8 @@ def compute_curve(system: PvSystem, responses: Sequence[dict], tz: tzinfo | None
             ta = float(ta) if ta is not None else 15.0
             cell = ta + system.cell_heating * g
             dc += array.kwp * g / 1000 * (1 + system.temp_coefficient * (cell - 25)) * system.system_efficiency
-        ac = dc * system.shading[start.hour] * system.inverter_efficiency
+        factor = system.solar_shading[utc_hour] if system.solar_shading else system.shading[start.hour]
+        ac = dc * factor * system.inverter_efficiency
         if system.inverter_kw:
             ac = min(ac, system.inverter_kw)
         slots.append(Slot(start, round(max(ac, 0.0), 4)))
@@ -225,8 +230,8 @@ def best_window(curve: Sequence[Slot], duration: timedelta, earliest: datetime, 
 class AutoCorrection:
     """Hourly correction factors learned from actual production."""
 
-    factors: tuple[float, ...]  # 24 values, by local hour, applied instead of the manual shading
-    hours: dict[int, dict]  # per local hour: days, median ratio, weight
+    factors: tuple[float, ...]  # 24 values by UTC hour (sun position), applied instead of the manual shading
+    hours: dict[int, dict]  # per UTC hour: days, median ratio, weight
     days: int  # days with at least one valid hour
 
 
@@ -239,11 +244,16 @@ AUTO_MIN_SHARE = 0.05  # ignore hours forecast below 5 % of the peak power
 
 def auto_correction(forecast_kwh: dict[datetime, float], actual_kwh: dict[datetime, float],
                     prior: Sequence[float], kwp: float, tz) -> AutoCorrection:
-    """Correction factor per local hour from hourly forecast and actual energy.
+    """Correction factor per UTC hour from hourly forecast and actual energy.
+
+    Shading follows the sun, not the clock: hours are grouped in UTC so that a
+    daylight saving time change inside the window does not mix two sun
+    positions. `prior` holds the manual factors by local hour; they are mapped
+    to UTC hours with the offset of the most recent day.
 
     `forecast_kwh` is the archived forecast without shading, `actual_kwh` the
-    measured energy, both keyed by the start of the hour. For each local hour,
-    the factor moves from the manual one (`prior`) towards the median of the
+    measured energy, both keyed by the start of the hour. For each hour, the
+    factor moves from the manual one towards the median of the
     daily ratios actual / forecast, by a weight that grows with the number of
     valid days: w = days / (days + AUTO_PRIOR_DAYS), and 0 below AUTO_MIN_DAYS.
     The median ignores a few odd days (inverter offline, unexpected sun).
@@ -255,8 +265,7 @@ def auto_correction(forecast_kwh: dict[datetime, float], actual_kwh: dict[dateti
         actual = actual_kwh.get(hour)
         if actual is None or forecast < AUTO_MIN_SHARE * kwp:
             continue
-        local = hour.astimezone(tz)
-        by_day.setdefault(local.date(), []).append((local.hour, forecast, actual))
+        by_day.setdefault(hour.astimezone(tz).date(), []).append((hour.astimezone(timezone.utc).hour, forecast, actual))
     for day, rows in by_day.items():
         # A day producing almost nothing while sun was forecast is an outage, not shading.
         if sum(a for _, _, a in rows) < 0.05 * sum(f for _, f, _ in rows):
@@ -264,7 +273,9 @@ def auto_correction(forecast_kwh: dict[datetime, float], actual_kwh: dict[dateti
         valid_days.add(day)
         for h, forecast, actual in rows:
             ratios[h].append(min(max(actual / forecast, 0.0), 2.0))
-    factors = list(prior)
+    reference = max(forecast_kwh) if forecast_kwh else datetime.now(timezone.utc)
+    factors = list(manual_by_utc_hour(prior, reference.date(), tz))
+    prior_utc = tuple(factors)
     hours: dict[int, dict] = {}
     for h, values in ratios.items():
         if not values:
@@ -274,10 +285,20 @@ def auto_correction(forecast_kwh: dict[datetime, float], actual_kwh: dict[dateti
         median = values[n // 2] if n % 2 else (values[n // 2 - 1] + values[n // 2]) / 2
         weight = n / (n + AUTO_PRIOR_DAYS) if n >= AUTO_MIN_DAYS else 0.0
         if weight:
-            value = prior[h] + (median - prior[h]) * weight
+            value = prior_utc[h] + (median - prior_utc[h]) * weight
             factors[h] = round(min(max(value, AUTO_RANGE[0]), AUTO_RANGE[1]), 3)
         hours[h] = {"days": n, "median_ratio": round(median, 3), "weight": round(weight, 2)}
     return AutoCorrection(tuple(factors), hours, len(valid_days))
+
+
+def local_hour_of_utc(hour: int, day: date, tz) -> int:
+    """Local clock hour of a UTC hour on a given day."""
+    return datetime(day.year, day.month, day.day, hour, tzinfo=timezone.utc).astimezone(tz).hour
+
+
+def manual_by_utc_hour(manual: Sequence[float], day: date, tz) -> tuple[float, ...]:
+    """Manual factors (by local hour) re-indexed by UTC hour, with the offset of `day`."""
+    return tuple(manual[local_hour_of_utc(h, day, tz)] for h in range(24))
 
 
 def parse_shading(text: str) -> tuple[float, ...]:
