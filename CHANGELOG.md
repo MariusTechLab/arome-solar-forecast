@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0
+
+- Automatic correction by time slots of 30 minutes (default), 15 minutes or
+  1 hour, new option "Correction resolution". Below one hour it uses the
+  15-minute archived forecasts and the 5-minute statistics of the production
+  sensor (kept 10 days by default by the recorder).
+- The sensor shows the factors by local clock time (HH:MM) and the slot length.
+- Walk-forward test on a real installation in docs/benchmark.md: the automatic
+  correction halves the daily error (42 % raw, 32 % manual shading, 16 to 17 %
+  with the automatic correction).
+
 ## 1.3.1
 
 - Automatic correction learned and applied by UTC hour (sun position) instead

@@ -169,7 +169,9 @@ In **Configure**, tick **Automatic correction** and pick your PV production
 sensor (energy in kWh, total or daily, or power in W or kW, with long-term
 statistics). Every night at 03:17, and at startup, the integration compares
 the archived AROME forecasts of the last 14 days with your actual production,
-hour by hour, and learns a correction factor for each hour of the day. It
+hour by hour, and learns a correction factor for each time slot of the day: 30 minutes by
+default, or 15 minutes or 1 hour (option **Correction resolution**; below one
+hour it uses the 5-minute statistics, kept 10 days by default by the recorder). It
 captures shading (trees, buildings), soiling or a capacity lower than
 declared, as Solcast's automated dampening does, without using any API quota.
 

@@ -21,6 +21,7 @@ from .const import (
     API_URL,
     ARRAY_KEYS,
     CONF_AUTO_CORRECTION,
+    CONF_CORRECTION_MINUTES,
     CONF_CELL_HEATING,
     CONF_INVERTER_EFFICIENCY,
     CONF_INVERTER_KW,
@@ -32,6 +33,7 @@ from .const import (
     CONF_TEMP_COEFFICIENT,
     DEFAULT_AZIMUTH,
     DEFAULT_CELL_HEATING,
+    DEFAULT_CORRECTION_MINUTES,
     DEFAULT_INVERTER_EFFICIENCY,
     DEFAULT_MODEL,
     DEFAULT_SCAN_MINUTES,
@@ -115,6 +117,7 @@ class AromeForecastCoordinator(DataUpdateCoordinator[ForecastData]):
         self.manual_shading = self.system.shading
         self.production_entity: str | None = entry_value(entry, CONF_PRODUCTION_ENTITY) or None
         self.auto_enabled = bool(entry_value(entry, CONF_AUTO_CORRECTION, False)) and bool(self.production_entity)
+        self.correction_minutes = int(entry_value(entry, CONF_CORRECTION_MINUTES, DEFAULT_CORRECTION_MINUTES))
         self.correction: AutoCorrection | None = None
         self.correction_updated: datetime | None = None
         self.correction_error: str | None = None
@@ -131,21 +134,26 @@ class AromeForecastCoordinator(DataUpdateCoordinator[ForecastData]):
         if not self.auto_enabled:
             return
         saved = await self._store.async_load()
-        # Factors saved before 1.3.1 were by local hour: ignore them, they are recomputed at startup.
-        if (saved and saved.get("basis") == "utc" and saved.get("entity") == self.production_entity
-                and saved.get("manual") == list(self.manual_shading) and len(saved.get("factors", [])) == 24):
-            hours = {int(h): v for h, v in saved.get("hours", {}).items()}
+        # Factors saved before 1.4.0 (by hour only, or by local hour before 1.3.1) are
+        # ignored: they are recomputed at startup.
+        minutes = self.correction_minutes
+        if (saved and saved.get("basis") == "utc" and saved.get("slot_minutes") == minutes
+                and saved.get("entity") == self.production_entity
+                and saved.get("manual") == list(self.manual_shading)
+                and len(saved.get("factors", [])) == 1440 // minutes):
+            slots = {int(i): v for i, v in saved.get("slots", {}).items()}
             updated = dt_util.parse_datetime(saved["updated"]) or dt_util.utcnow()
-            self._apply_correction(AutoCorrection(tuple(saved["factors"]), hours, saved.get("days", 0)), updated)
+            correction = AutoCorrection(tuple(saved["factors"]), slots, saved.get("days", 0), minutes)
+            self._apply_correction(correction, updated)
 
     async def async_update_correction(self, *_: Any) -> None:
-        """Recompute the hourly factors from the last days of production."""
+        """Recompute the factors from the last days of production."""
         if not self.auto_enabled or not self.production_entity:
             return
         try:
             result = await compute_correction(self.hass, self._session, self.latitude, self.longitude,
                                               self.model, self.system, self.manual_shading,
-                                              self.production_entity)
+                                              self.production_entity, self.correction_minutes)
         except (aiohttp.ClientError, TimeoutError, ValueError, KeyError, HomeAssistantError) as err:
             self.correction_error = str(err)
             _LOGGER.warning("Automatic correction not updated, keeping the previous factors: %s", err)
@@ -155,10 +163,11 @@ class AromeForecastCoordinator(DataUpdateCoordinator[ForecastData]):
         self._apply_correction(result, now)
         await self._store.async_save({
             "basis": "utc",
+            "slot_minutes": result.slot_minutes,
             "entity": self.production_entity,
             "manual": list(self.manual_shading),
             "factors": list(result.factors),
-            "hours": {str(h): v for h, v in result.hours.items()},
+            "slots": {str(i): v for i, v in result.slots.items()},
             "days": result.days,
             "updated": now.isoformat(),
         })

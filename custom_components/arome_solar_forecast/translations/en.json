@@ -57,7 +57,8 @@
           "shading": "Shading factors",
           "scan_minutes": "Update interval",
           "auto_correction": "Automatic correction",
-          "production_entity": "Production sensor"
+          "production_entity": "Production sensor",
+          "correction_minutes": "Correction resolution"
         },
         "data_description": {
           "system_efficiency": "Soiling, wiring and mismatch losses (0.98 = 2 % losses).",
@@ -65,8 +66,9 @@
           "cell_heating": "Cell temperature rise per W/m²: 0.025 open rack, 0.03 roof mounted, 0.035 roof integrated.",
           "shading": "Factors by local hour, for example 8=0.7, 16=0.5, 17=0.4. Empty = no shading.",
           "scan_minutes": "Open-Meteo is called once per roof plane at each update.",
-          "auto_correction": "Learns a correction factor for each hour from the actual production of the last 14 days, recomputed every night. It replaces the shading factors above, starting from them: no correction before 3 days of data, then a gradual one (about half way after 7 days, two thirds after 14).",
-          "production_entity": "Energy sensor of the PV production (kWh, total or daily) or power sensor (W or kW), with long-term statistics."
+          "auto_correction": "Learns a correction factor for each time slot from the actual production of the last 14 days, recomputed every night. It replaces the shading factors above, starting from them: no correction before 3 days of data, then a gradual one (about half way after 7 days, two thirds after 14).",
+          "production_entity": "Energy sensor of the PV production (kWh, total or daily) or power sensor (W or kW), with long-term statistics.",
+          "correction_minutes": "Length of the time slots that get their own factor. 30 or 15 minutes follow a fast-moving shadow more closely, but use the 5-minute statistics, kept 10 days by default by the recorder."
         }
       }
     },
@@ -94,6 +96,13 @@
       "options": {
         "today": "Today",
         "tomorrow": "Tomorrow"
+      }
+    },
+    "correction_minutes": {
+      "options": {
+        "15": "15 minutes",
+        "30": "30 minutes (recommended)",
+        "60": "1 hour"
       }
     }
   },

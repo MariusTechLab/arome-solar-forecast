@@ -17,6 +17,7 @@ from .const import (
     AROME_LATITUDE,
     AROME_LONGITUDE,
     CONF_AUTO_CORRECTION,
+    CONF_CORRECTION_MINUTES,
     CONF_AZIMUTH,
     CONF_AZIMUTH_2,
     CONF_AZIMUTH_3,
@@ -37,12 +38,14 @@ from .const import (
     CONF_TILT_3,
     DEFAULT_AZIMUTH,
     DEFAULT_CELL_HEATING,
+    DEFAULT_CORRECTION_MINUTES,
     DEFAULT_INVERTER_EFFICIENCY,
     DEFAULT_MODEL,
     DEFAULT_SCAN_MINUTES,
     DEFAULT_SYSTEM_EFFICIENCY,
     DEFAULT_TEMP_COEFFICIENT,
     DEFAULT_TILT,
+    CORRECTION_MINUTES,
     DOMAIN,
     MODELS,
 )
@@ -100,6 +103,11 @@ def _system_schema(d: dict[str, Any], hass_lat: float, hass_lon: float, first_st
         vol.Required(CONF_AUTO_CORRECTION, default=d.get(CONF_AUTO_CORRECTION, False)): selector.BooleanSelector(),
         vol.Optional(CONF_PRODUCTION_ENTITY, description={"suggested_value": d.get(CONF_PRODUCTION_ENTITY)}):
             selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class=["energy", "power"])),
+        vol.Required(CONF_CORRECTION_MINUTES,
+                     default=str(d.get(CONF_CORRECTION_MINUTES, DEFAULT_CORRECTION_MINUTES))):
+            selector.SelectSelector(selector.SelectSelectorConfig(
+                options=list(CORRECTION_MINUTES), translation_key="correction_minutes",
+                mode=selector.SelectSelectorMode.DROPDOWN)),
         vol.Required(CONF_SCAN_MINUTES, default=d.get(CONF_SCAN_MINUTES, DEFAULT_SCAN_MINUTES)):
             _number(10, 60, 5, "min"),
     })

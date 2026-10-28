@@ -153,14 +153,14 @@ class AutoCorrectionTest(unittest.TestCase):
                 actual[start] = 0.0 if d in outage_days else 1.5 * ratio
         return forecast, actual
 
-    def run_auto(self, forecast, actual, prior=None):
-        return fc.auto_correction(forecast, actual, prior or (1.0,) * 24, 3.0, PARIS)
+    def run_auto(self, forecast, actual, prior=None, minutes=60):
+        return fc.auto_correction(forecast, actual, prior or (1.0,) * 24, 3.0, PARIS, minutes)
 
     # History uses local hours in June (UTC + 2); results are by UTC hour: local 17 h = UTC 15 h.
     def test_no_correction_before_three_days(self) -> None:
         r = self.run_auto(*self.history(2, {17: 0.5}))
         self.assertEqual(r.factors[15], 1.0)
-        self.assertEqual(r.hours[15]["weight"], 0.0)
+        self.assertEqual(r.slots[15]["weight"], 0.0)
         self.assertEqual(r.days, 2)
 
     def test_gradual_weight(self) -> None:
@@ -180,16 +180,16 @@ class AutoCorrectionTest(unittest.TestCase):
     def test_outage_and_odd_days_are_ignored(self) -> None:
         r = self.run_auto(*self.history(10, {17: 0.5}, outage_days=(3, 4)))
         self.assertEqual(r.days, 8)
-        self.assertEqual(r.hours[15]["days"], 8)
+        self.assertEqual(r.slots[15]["days"], 8)
         r = self.run_auto(*self.history(10, {17: 0.5}, odd_days={1: 1.8}))
-        self.assertEqual(r.hours[15]["median_ratio"], 0.5)  # one very sunny surprise does not move the median
+        self.assertEqual(r.slots[15]["median_ratio"], 0.5)  # one very sunny surprise does not move the median
 
     def test_low_forecast_hours_and_bounds(self) -> None:
         forecast, actual = self.history(14, {9: 0.05, 11: 1.9})
         dawn = datetime(2026, 6, 2, 6, tzinfo=PARIS).astimezone(timezone.utc)
         forecast[dawn], actual[dawn] = 0.1, 0.0  # under 5 % of 3 kWp: ignored
         r = self.run_auto(forecast, actual)
-        self.assertNotIn(4, r.hours)
+        self.assertNotIn(4, r.slots)
         self.assertAlmostEqual(r.factors[7], round(1 - 0.95 * 14 / 21, 3), places=3)
         self.assertEqual(r.factors[9], fc.AUTO_RANGE[1])  # 1.6 capped at 1.2
 
@@ -202,7 +202,7 @@ class AutoCorrectionTest(unittest.TestCase):
                 forecast[t] = 1.5
                 actual[t] = 1.5 * (0.3 if h == 14 else 1.0)
         r = self.run_auto(forecast, actual)
-        self.assertEqual(r.hours[14]["days"], 14)
+        self.assertEqual(r.slots[14]["days"], 14)
         self.assertAlmostEqual(r.factors[14], round(1 - 0.7 * 14 / 21, 3), places=3)
         self.assertEqual(r.factors[13], 1.0)
         self.assertEqual(r.factors[15], 1.0)  # by local hour, 15 h and 16 h would both have been blurred
@@ -219,6 +219,43 @@ class AutoCorrectionTest(unittest.TestCase):
         for s, p in zip(curve, plain):
             expected = p.kw * (0.5 if s.start.astimezone(timezone.utc).hour == 14 else 1.0)
             self.assertAlmostEqual(s.kw, expected, places=3)  # manual local shading ignored once learned
+
+    def test_half_hour_and_quarter_hour_slots(self) -> None:
+        # Quarter-hour data: shade only during 15:00-15:30 UTC, 14 days.
+        forecast15, actual15 = {}, {}
+        for d in range(14):
+            for q in range(24, 68):  # 06:00 to 17:00 UTC
+                t = datetime(2026, 10, 1 + d, q // 4, 15 * (q % 4), tzinfo=timezone.utc)
+                forecast15[t] = 0.4
+                actual15[t] = 0.4 * (0.3 if t.hour == 15 and t.minute < 30 else 1.0)
+        w = 14 / 21
+        for minutes in (15, 30, 60):
+            r = self.run_auto(fc.aggregate(forecast15, minutes), fc.aggregate(actual15, minutes), minutes=minutes)
+            self.assertEqual(len(r.factors), 1440 // minutes)
+            self.assertEqual(r.slot_minutes, minutes)
+            if minutes == 60:  # the hour mixes a shaded and a clear half hour
+                self.assertAlmostEqual(r.factors[15], round(1 - 0.35 * w, 3), places=3)
+            else:
+                first = 15 * 60 // minutes
+                self.assertAlmostEqual(r.factors[first], round(1 - 0.7 * w, 3), places=3)
+                self.assertEqual(r.factors[first + 60 // minutes - 1], 1.0)  # 15:30-16:00 clear
+        self.assertEqual(fc.local_slot_label(31, date(2026, 10, 28), PARIS, 30), "16:30")
+
+    def test_slot_shading_in_curve(self) -> None:
+        data = fixture(900)
+        solar = [1.0] * 48
+        solar[29] = 0.5  # 14:30-15:00 UTC
+        system = fc.PvSystem(arrays=(fc.PvArray(3, 30, 180),), solar_shading=tuple(solar))
+        curve = fc.compute_curve(system, [response(data)], PARIS)
+        plain = fc.compute_curve(fc.PvSystem(arrays=(fc.PvArray(3, 30, 180),)), [response(data)], PARIS)
+        for s, p in zip(curve, plain):
+            u = s.start.astimezone(timezone.utc)
+            shaded = u.hour == 14 and u.minute >= 30
+            self.assertAlmostEqual(s.kw, p.kw * (0.5 if shaded else 1.0), places=3)
+
+    def test_aggregate_rejects_other_lengths(self) -> None:
+        with self.assertRaises(ValueError):
+            fc.aggregate({}, 20)
 
     def test_hourly_archive_curve(self) -> None:
         hourly = {"time": [f"2026-06-21T{h:02d}:00" for h in range(24)],

@@ -3,7 +3,7 @@
 from typing import Final
 
 DOMAIN: Final = "arome_solar_forecast"
-VERSION: Final = "1.3.1"
+VERSION: Final = "1.4.0"
 API_URL: Final = "https://api.open-meteo.com/v1/forecast"
 ARCHIVE_URL: Final = "https://previous-runs-api.open-meteo.com/v1/forecast"
 ATTRIBUTION: Final = "Weather data by Open-Meteo.com (CC BY 4.0), model by Météo-France"
@@ -27,6 +27,7 @@ CONF_SHADING: Final = "shading"
 CONF_SCAN_MINUTES: Final = "scan_minutes"
 CONF_AUTO_CORRECTION: Final = "auto_correction"
 CONF_PRODUCTION_ENTITY: Final = "production_entity"
+CONF_CORRECTION_MINUTES: Final = "correction_minutes"
 
 ARRAY_KEYS: Final = (
     (CONF_KWP, CONF_TILT, CONF_AZIMUTH),
@@ -64,3 +65,5 @@ STALE_AFTER_HOURS: Final = 6
 # Automatic correction: days of history compared, and nightly run time.
 AUTO_DAYS: Final = 14
 AUTO_RUN_TIME: Final = (3, 17)
+DEFAULT_CORRECTION_MINUTES: Final = 30
+CORRECTION_MINUTES: Final = ("15", "30", "60")

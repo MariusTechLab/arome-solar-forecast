@@ -24,7 +24,7 @@ from homeassistant.util import dt as dt_util
 from . import AromeConfigEntry
 from .const import ATTRIBUTION, DOMAIN, VERSION
 from .coordinator import AromeForecastCoordinator, ForecastData
-from .forecast import covers_day, local_hour_of_utc, day_energy, energy_between, half_hours, peak, power_at, quarter_hours
+from .forecast import covers_day, local_slot_label, day_energy, energy_between, half_hours, peak, power_at, quarter_hours
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -196,9 +196,9 @@ class AromeCorrectionSensor(AromeSensor):
     @property
     def native_value(self) -> float | None:
         correction = self.coordinator.correction
-        if not correction or not correction.hours:
+        if not correction or not correction.slots:
             return None
-        values = [correction.factors[h] for h in correction.hours]
+        values = [correction.factors[i] for i in correction.slots]
         return round(sum(values) / len(values), 3)
 
     @property
@@ -209,13 +209,15 @@ class AromeCorrectionSensor(AromeSensor):
             "manual_factors": {f"{h:02d}": f for h, f in enumerate(c.manual_shading) if f != 1.0},
         }
         if c.correction:
-            # Learned by UTC hour (sun position); shown with today's local clock hours.
-            today, tz = dt_util.now().date(), dt_util.get_default_time_zone()
-            local = {h: local_hour_of_utc(h, today, tz) for h in c.correction.hours}
+            # Learned by UTC slot (sun position); shown with today's local clock times.
+            today, tz, minutes = dt_util.now().date(), dt_util.get_default_time_zone(), c.correction.slot_minutes
+            local = {i: local_slot_label(i, today, tz, minutes) for i in c.correction.slots}
+            order = sorted(local, key=local.get)
             attributes.update({
+                "slot_minutes": minutes,
                 "days": c.correction.days,
-                "factors": {f"{local[h]:02d}": c.correction.factors[h] for h in sorted(local, key=local.get)},
-                "hours": {f"{local[h]:02d}": c.correction.hours[h] for h in sorted(local, key=local.get)},
+                "factors": {local[i]: c.correction.factors[i] for i in order},
+                "slots": {local[i]: c.correction.slots[i] for i in order},
                 "updated": c.correction_updated.isoformat() if c.correction_updated else None,
             })
         if c.correction_error:

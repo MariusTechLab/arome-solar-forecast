@@ -101,6 +101,25 @@ models 19 %.
    with low, flat autumn production the limit is forecast uncertainty, not the
    scheduling rule.
 
+## Automatic correction: walk-forward test
+
+Same installation, 23 to 28 October 2026. For each day, the correction
+factors are learned from the 14 previous days only, then applied to that day's
+archived AROME forecast, and compared with the actual production (5-minute
+statistics summed by quarter hour).
+
+| Method | Error per quarter hour | Mean daily energy error |
+|---|---|---|
+| AROME raw | 0.063 kWh | 42.5 % |
+| Manual hourly shading (2 factors) | 0.056 kWh | 32.2 % |
+| Automatic correction, 1 hour | 0.053 kWh | 16.9 % |
+| Automatic correction, 30 minutes | 0.053 kWh | 16.8 % |
+| Automatic correction, 15 minutes | 0.053 kWh | 16.4 % |
+
+The automatic correction halves the daily error. On this site, the slot
+length barely matters; 30 minutes is the default as a compromise between
+following a moving shadow and the amount of data per slot.
+
 ## Limits of this benchmark
 
 One site, one season, 17 test days. The ranking can differ elsewhere, in

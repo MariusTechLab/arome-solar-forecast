@@ -185,7 +185,10 @@ capteur de production solaire : énergie en kWh (totale ou du jour) ou
 puissance en W ou kW, avec statistiques à long terme. Chaque nuit à 03:17,
 ainsi qu'au démarrage, l'intégration compare heure par heure les prévisions
 AROME archivées des 14 derniers jours à votre production réelle, et apprend un
-facteur de correction pour chaque heure de la journée. Il prend en compte
+facteur de correction pour chaque créneau de la journée : 30 minutes par
+défaut, ou 15 minutes ou 1 heure (option **Résolution de la correction** ; en
+dessous d'une heure, elle utilise les statistiques à 5 minutes, que
+l'enregistreur conserve 10 jours par défaut). Il prend en compte
 l'ombrage (arbres, bâtiments), la salissure ou une puissance plus faible que
 celle déclarée, comme l'atténuation automatique de Solcast, sans consommer de
 quota d'API.
